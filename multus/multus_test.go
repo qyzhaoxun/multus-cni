@@ -32,7 +32,7 @@ import (
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/containernetworking/plugins/pkg/testutils"
 
-	testhelpers "github.com/intel/multus-cni/testing"
+	testhelpers "github.com/qyzhaoxun/multus-cni/testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

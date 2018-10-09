@@ -31,8 +31,8 @@ import (
 	"github.com/containernetworking/cni/libcni"
 	"github.com/containernetworking/cni/pkg/skel"
 	cnitypes "github.com/containernetworking/cni/pkg/types"
-	"github.com/intel/multus-cni/logging"
-	"github.com/intel/multus-cni/types"
+	"github.com/qyzhaoxun/multus-cni/logging"
+	"github.com/qyzhaoxun/multus-cni/types"
 )
 
 // NoK8sNetworkError indicates error, no network in kubernetes
@@ -55,9 +55,9 @@ type defaultKubeClient struct {
 // defaultKubeClient implements KubeClient
 var _ KubeClient = &defaultKubeClient{}
 
-func (d *defaultKubeClient) GetRawWithPath(path string) ([]byte, error) {
-	return d.client.ExtensionsV1beta1().RESTClient().Get().AbsPath(path).DoRaw()
-}
+//func (d *defaultKubeClient) GetRawWithPath(path string) ([]byte, error) {
+//	return d.client.ExtensionsV1beta1().RESTClient().Get().AbsPath(path).DoRaw()
+//}
 
 func (d *defaultKubeClient) GetPod(namespace, name string) (*v1.Pod, error) {
 	return d.client.Core().Pods(namespace).Get(name, metav1.GetOptions{})
@@ -276,72 +276,76 @@ func getCNIConfigFromFile(name string, confdir string) ([]byte, error) {
 
 // getCNIConfigFromSpec reads a CNI JSON configuration from the NetworkAttachmentDefinition
 // object's Spec.Config field and fills in any missing details like the network name
-func getCNIConfigFromSpec(configData, netName string) ([]byte, error) {
-	var rawConfig map[string]interface{}
-	var err error
+//func getCNIConfigFromSpec(configData, netName string) ([]byte, error) {
+//	var rawConfig map[string]interface{}
+//	var err error
+//
+//	logging.Debugf("getCNIConfigFromSpec: %s, %s", configData, netName)
+//	configBytes := []byte(configData)
+//	err = json.Unmarshal(configBytes, &rawConfig)
+//	if err != nil {
+//		return nil, logging.Errorf("getCNIConfigFromSpec: failed to unmarshal Spec.Config: %v", err)
+//	}
+//
+//	// Inject network name if missing from Config for the thick plugin case
+//	if n, ok := rawConfig["name"]; !ok || n == "" {
+//		rawConfig["name"] = netName
+//		configBytes, err = json.Marshal(rawConfig)
+//		if err != nil {
+//			return nil, logging.Errorf("getCNIConfigFromSpec: failed to re-marshal Spec.Config: %v", err)
+//		}
+//	}
+//
+//	return configBytes, nil
+//}
 
-	logging.Debugf("getCNIConfigFromSpec: %s, %s", configData, netName)
-	configBytes := []byte(configData)
-	err = json.Unmarshal(configBytes, &rawConfig)
-	if err != nil {
-		return nil, logging.Errorf("getCNIConfigFromSpec: failed to unmarshal Spec.Config: %v", err)
-	}
-
-	// Inject network name if missing from Config for the thick plugin case
-	if n, ok := rawConfig["name"]; !ok || n == "" {
-		rawConfig["name"] = netName
-		configBytes, err = json.Marshal(rawConfig)
-		if err != nil {
-			return nil, logging.Errorf("getCNIConfigFromSpec: failed to re-marshal Spec.Config: %v", err)
-		}
-	}
-
-	return configBytes, nil
-}
-
-func cniConfigFromNetworkResource(customResource *types.NetworkAttachmentDefinition, confdir string) ([]byte, error) {
-	var config []byte
-	var err error
-
-	logging.Debugf("cniConfigFromNetworkResource: %v, %s", customResource, confdir)
-	emptySpec := types.NetworkAttachmentDefinitionSpec{}
-	if customResource.Spec == emptySpec {
-		// Network Spec empty; generate delegate from CNI JSON config
-		// from the configuration directory that has the same network
-		// name as the custom resource
-		config, err = getCNIConfigFromFile(customResource.Metadata.Name, confdir)
-		if err != nil {
-			return nil, logging.Errorf("cniConfigFromNetworkResource: err in getCNIConfigFromFile: %v", err)
-		}
-	} else {
-		// Config contains a standard JSON-encoded CNI configuration
-		// or configuration list which defines the plugin chain to
-		// execute.
-		config, err = getCNIConfigFromSpec(customResource.Spec.Config, customResource.Metadata.Name)
-		if err != nil {
-			return nil, logging.Errorf("cniConfigFromNetworkResource: err in getCNIConfigFromSpec: %v", err)
-		}
-	}
-
-	return config, nil
-}
+//func cniConfigFromNetworkResource(customResource *types.NetworkAttachmentDefinition, confdir string) ([]byte, error) {
+//	var config []byte
+//	var err error
+//
+//	logging.Debugf("cniConfigFromNetworkResource: %v, %s", customResource, confdir)
+//	emptySpec := types.NetworkAttachmentDefinitionSpec{}
+//	if customResource.Spec == emptySpec {
+//		// Network Spec empty; generate delegate from CNI JSON config
+//		// from the configuration directory that has the same network
+//		// name as the custom resource
+//		config, err = getCNIConfigFromFile(customResource.Metadata.Name, confdir)
+//		if err != nil {
+//			return nil, logging.Errorf("cniConfigFromNetworkResource: err in getCNIConfigFromFile: %v", err)
+//		}
+//	} else {
+//		// Config contains a standard JSON-encoded CNI configuration
+//		// or configuration list which defines the plugin chain to
+//		// execute.
+//		config, err = getCNIConfigFromSpec(customResource.Spec.Config, customResource.Metadata.Name)
+//		if err != nil {
+//			return nil, logging.Errorf("cniConfigFromNetworkResource: err in getCNIConfigFromSpec: %v", err)
+//		}
+//	}
+//
+//	return config, nil
+//}
 
 func getKubernetesDelegate(client KubeClient, net *types.NetworkSelectionElement, confdir string) (*types.DelegateNetConf, error) {
 	logging.Debugf("getKubernetesDelegate: %v, %v, %s", client, net, confdir)
-	rawPath := fmt.Sprintf("/apis/k8s.cni.cncf.io/v1/namespaces/%s/network-attachment-definitions/%s", net.Namespace, net.Name)
-	netData, err := client.GetRawWithPath(rawPath)
+	//rawPath := fmt.Sprintf("/apis/k8s.cni.cncf.io/v1/namespaces/%s/network-attachment-definitions/%s", net.Namespace, net.Name)
+	//netData, err := client.GetRawWithPath(rawPath)
+	//if err != nil {
+	//	return nil, logging.Errorf("getKubernetesDelegate: failed to get network resource, refer Multus README.md for the usage guide: %v", err)
+	//}
+	//
+	//customResource := &types.NetworkAttachmentDefinition{}
+	//if err := json.Unmarshal(netData, customResource); err != nil {
+	//	return nil, logging.Errorf("getKubernetesDelegate: failed to get the netplugin data: %v", err)
+	//}
+	//
+	//configBytes, err := cniConfigFromNetworkResource(customResource, confdir)
+	//if err != nil {
+	//	return nil, err
+	//}
+	configBytes, err := getCNIConfigFromFile(net.Name, confdir)
 	if err != nil {
-		return nil, logging.Errorf("getKubernetesDelegate: failed to get network resource, refer Multus README.md for the usage guide: %v", err)
-	}
-
-	customResource := &types.NetworkAttachmentDefinition{}
-	if err := json.Unmarshal(netData, customResource); err != nil {
-		return nil, logging.Errorf("getKubernetesDelegate: failed to get the netplugin data: %v", err)
-	}
-
-	configBytes, err := cniConfigFromNetworkResource(customResource, confdir)
-	if err != nil {
-		return nil, err
+		return nil, logging.Errorf("cniConfigFromNetworkResource: err in getCNIConfigFromFile: %v", err)
 	}
 
 	delegate, err := types.LoadDelegateNetConf(configBytes, net.InterfaceRequest)
@@ -353,7 +357,7 @@ func getKubernetesDelegate(client KubeClient, net *types.NetworkSelectionElement
 }
 
 type KubeClient interface {
-	GetRawWithPath(path string) ([]byte, error)
+	//GetRawWithPath(path string) ([]byte, error)
 	GetPod(namespace, name string) (*v1.Pod, error)
 	UpdatePodStatus(pod *v1.Pod) (*v1.Pod, error)
 }

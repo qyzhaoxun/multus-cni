@@ -1,6 +1,6 @@
-![multus-cni Logo](https://github.com/intel/multus-cni/blob/master/doc/images/Multus.png)
+![multus-cni Logo](https://github.com/qyzhaoxun/multus-cni/blob/master/doc/images/Multus.png)
 
-[![Travis CI](https://travis-ci.org/intel/multus-cni.svg?branch=master)](https://travis-ci.org/intel/multus-cni/builds)[![Go Report Card](https://goreportcard.com/badge/github.com/intel/multus-cni)](https://goreportcard.com/report/github.com/intel/multus-cni)
+[![Travis CI](https://travis-ci.org/intel/multus-cni.svg?branch=master)](https://travis-ci.org/intel/multus-cni/builds)[![Go Report Card](https://goreportcard.com/badge/github.com/qyzhaoxun/multus-cni)](https://goreportcard.com/report/github.com/qyzhaoxun/multus-cni)
 
    * [MULTUS CNI plugin](#multus-cni-plugin)
       * [Quickstart Guide](#quickstart-guide)
@@ -135,9 +135,9 @@ $ kubectl exec -it samplepod -- ip a
 
 - name (string, required): the name of the network
 - type (string, required): &quot;multus&quot;
-- kubeconfig (string, optional): kubeconfig file for the out of cluster communication with kube-apiserver. See the example [kubeconfig](https://github.com/intel/multus-cni/blob/master/doc/node-kubeconfig.yaml)
+- kubeconfig (string, optional): kubeconfig file for the out of cluster communication with kube-apiserver. See the example [kubeconfig](https://github.com/qyzhaoxun/multus-cni/blob/master/doc/node-kubeconfig.yaml)
 - delegates (([]map,required): number of delegate details in the Multus
-- capabilities ({}list, optional): [capabilities](https://github.com/containernetworking/cni/blob/master/CONVENTIONS.md#dynamic-plugin-specific-fields-capabilities--runtime-configuration) supported by at least one of the delegates. (NOTE: Multus only supports portMappings capability for now). See the [example](https://github.com/intel/multus-cni/blob/master/examples/multus-ptp-portmap.conf).
+- capabilities ({}list, optional): [capabilities](https://github.com/containernetworking/cni/blob/master/CONVENTIONS.md#dynamic-plugin-specific-fields-capabilities--runtime-configuration) supported by at least one of the delegates. (NOTE: Multus only supports portMappings capability for now). See the [example](https://github.com/qyzhaoxun/multus-cni/blob/master/examples/multus-ptp-portmap.conf).
 
 ## Usage with Kubernetes CRD based network objects
 
@@ -286,7 +286,7 @@ sriov-vlanid-l2enable-conf   2m
 
 ### Configuring Multus to use kubeconfig and a default network
 
-1. Many users want Kubernetes default networking feature along with network objects. Refer to issues [#14](https://github.com/intel/multus-cni/issues/14) &amp; [#17](https://github.com/intel/multus-cni/issues/17) for more information. In the following Multus configuration, Weave act as the default network in the absence of network field in the pod metadata annotation.
+1. Many users want Kubernetes default networking feature along with network objects. Refer to issues [#14](https://github.com/qyzhaoxun/multus-cni/issues/14) &amp; [#17](https://github.com/qyzhaoxun/multus-cni/issues/17) for more information. In the following Multus configuration, Weave act as the default network in the absence of network field in the pod metadata annotation.
 
 ```
 {
@@ -497,7 +497,7 @@ You may configure the logging level by using the `LogLevel` option in your CNI c
 
 ### Multiple flannel networks
 
-Github user [YYGCui](https://github.com/YYGCui) has used multiple flannel network to work with Multus CNI plugin. Please refer to this [closed issue](https://github.com/intel/multus-cni/issues/7) for ,multiple overlay network support with Multus CNI.
+Github user [YYGCui](https://github.com/YYGCui) has used multiple flannel network to work with Multus CNI plugin. Please refer to this [closed issue](https://github.com/qyzhaoxun/multus-cni/issues/7) for ,multiple overlay network support with Multus CNI.
 
 Make sure that the multus, [sriov](https://github.com/Intel-Corp/sriov-cni), [flannel](https://github.com/containernetworking/cni/blob/master/Documentation/flannel.md), and [ptp](https://github.com/containernetworking/cni/blob/master/Documentation/ptp.md) binaries are in the /opt/cni/bin directories and follow the steps as mentioned in the [CNI](https://github.com/containernetworking/cni/#running-a-docker-container-with-network-namespace-set-up-by-cni-plugins)
 

@@ -23,7 +23,7 @@ import (
 	"github.com/containernetworking/cni/pkg/types"
 	"github.com/containernetworking/cni/pkg/types/current"
 	"github.com/containernetworking/cni/pkg/version"
-	"github.com/intel/multus-cni/logging"
+	"github.com/qyzhaoxun/multus-cni/logging"
 )
 
 const (

@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	testutils "github.com/intel/multus-cni/testing"
+	testutils "github.com/qyzhaoxun/multus-cni/testing"
 
 	"github.com/containernetworking/cni/pkg/skel"
 
