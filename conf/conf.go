@@ -13,17 +13,21 @@
 // limitations under the License.
 //
 
-package types
+package conf
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/containernetworking/cni/libcni"
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
 	"github.com/containernetworking/cni/pkg/types/current"
 	"github.com/containernetworking/cni/pkg/version"
+
 	"github.com/qyzhaoxun/multus-cni/logging"
+	mtypes "github.com/qyzhaoxun/multus-cni/types"
+	"github.com/qyzhaoxun/multus-cni/utils"
 )
 
 const (
@@ -32,7 +36,7 @@ const (
 	defaultBinDir  = "/opt/cni/bin"
 )
 
-func LoadDelegateNetConfList(bytes []byte, delegateConf *DelegateNetConf) error {
+func LoadDelegateNetConfList(bytes []byte, delegateConf *mtypes.DelegateNetConf) error {
 
 	logging.Debugf("LoadDelegateNetConfList: %s, %v", string(bytes), delegateConf)
 	if err := json.Unmarshal(bytes, &delegateConf.ConfList); err != nil {
@@ -50,8 +54,8 @@ func LoadDelegateNetConfList(bytes []byte, delegateConf *DelegateNetConf) error 
 }
 
 // Convert raw CNI JSON into a DelegateNetConf structure
-func LoadDelegateNetConf(bytes []byte, ifnameRequest string) (*DelegateNetConf, error) {
-	delegateConf := &DelegateNetConf{}
+func LoadDelegateNetConf(bytes []byte, ifnameRequest string) (*mtypes.DelegateNetConf, error) {
+	delegateConf := &mtypes.DelegateNetConf{}
 	logging.Debugf("LoadDelegateNetConf: %s, %s", string(bytes), ifnameRequest)
 	if err := json.Unmarshal(bytes, &delegateConf.Conf); err != nil {
 		return nil, logging.Errorf("error in LoadDelegateNetConf - unmarshalling delegate config: %v", err)
@@ -73,7 +77,7 @@ func LoadDelegateNetConf(bytes []byte, ifnameRequest string) (*DelegateNetConf, 
 	return delegateConf, nil
 }
 
-func LoadCNIRuntimeConf(args *skel.CmdArgs, k8sArgs *K8sArgs, ifName string, rc *RuntimeConfig) (*libcni.RuntimeConf, error) {
+func LoadCNIRuntimeConf(args *skel.CmdArgs, k8sArgs *mtypes.K8sArgs, ifName string, rc *mtypes.RuntimeConfig) (*libcni.RuntimeConf, error) {
 
 	logging.Debugf("LoadCNIRuntimeConf: %v, %v, %s, %v", args, k8sArgs, ifName, rc)
 	// In part, adapted from K8s pkg/kubelet/dockershim/network/cni/cni.go#buildCNIRuntimeConf
@@ -99,7 +103,7 @@ func LoadCNIRuntimeConf(args *skel.CmdArgs, k8sArgs *K8sArgs, ifName string, rc 
 	return rt, nil
 }
 
-func LoadNetworkStatus(r types.Result, netName string, defaultNet bool) (*NetworkStatus, error) {
+func LoadNetworkStatus(r types.Result, netName string, defaultNet bool) (*mtypes.NetworkStatus, error) {
 	logging.Debugf("LoadNetworkStatus: %v, %s, %s", r, netName, defaultNet)
 
 	// Convert whatever the IPAM result was into the current Result type
@@ -108,7 +112,7 @@ func LoadNetworkStatus(r types.Result, netName string, defaultNet bool) (*Networ
 		return nil, logging.Errorf("error convert the type.Result to current.Result: %v", err)
 	}
 
-	netstatus := &NetworkStatus{}
+	netstatus := &mtypes.NetworkStatus{}
 	netstatus.Name = netName
 	netstatus.Default = defaultNet
 
@@ -136,8 +140,8 @@ func LoadNetworkStatus(r types.Result, netName string, defaultNet bool) (*Networ
 
 }
 
-func LoadNetConf(bytes []byte) (*NetConf, error) {
-	netconf := &NetConf{}
+func LoadNetConf(bytes []byte) (*mtypes.NetConf, error) {
+	netconf := &mtypes.NetConf{}
 
 	logging.Debugf("LoadNetConf: %s", string(bytes))
 	if err := json.Unmarshal(bytes, netconf); err != nil {
@@ -169,16 +173,6 @@ func LoadNetConf(bytes []byte) (*NetConf, error) {
 		}
 	}
 
-	// Delegates must always be set. If no kubeconfig is present, the
-	// delegates are executed in-order.  If a kubeconfig is present,
-	// at least one delegate must be present and the first delegate is
-	// the master plugin. Kubernetes CRD delegates are then appended to
-	// the existing delegate list and all delegates executed in-order.
-
-	if len(netconf.RawDelegates) == 0 {
-		return nil, logging.Errorf("at least one delegate must be specified")
-	}
-
 	if netconf.CNIDir == "" {
 		netconf.CNIDir = defaultCNIDir
 	}
@@ -191,28 +185,98 @@ func LoadNetConf(bytes []byte) (*NetConf, error) {
 		netconf.BinDir = defaultBinDir
 	}
 
-	for idx, rawConf := range netconf.RawDelegates {
-		bytes, err := json.Marshal(rawConf)
+	if netconf.DefaultDelegates != "" {
+		delegates, err := getDefaultDelegates(netconf.DefaultDelegates, netconf.ConfDir)
 		if err != nil {
-			return nil, logging.Errorf("error marshalling delegate %d config: %v", idx, err)
+			return nil, logging.Errorf("failed to load default delegates from config: %v", err)
 		}
-		delegateConf, err := LoadDelegateNetConf(bytes, "")
-		if err != nil {
-			return nil, logging.Errorf("failed to load delegate %d config: %v", idx, err)
+		for _, delegate := range delegates {
+			netconf.Delegates = append(netconf.Delegates, delegate)
 		}
-		netconf.Delegates = append(netconf.Delegates, delegateConf)
 	}
-	netconf.RawDelegates = nil
-
-	// First delegate is always the master plugin
-	netconf.Delegates[0].MasterPlugin = true
 
 	return netconf, nil
 }
 
-// AddDelegates appends the new delegates to the delegates list
-func (n *NetConf) AddDelegates(newDelegates []*DelegateNetConf) error {
-	logging.Debugf("AddDelegates: %v", newDelegates)
-	n.Delegates = append(n.Delegates, newDelegates...)
-	return nil
+func getDefaultDelegates(delegatesAnnot, confdir string) ([]*mtypes.DelegateNetConf, error) {
+	networks, err := utils.ParsePodNetworkAnnotation(delegatesAnnot, "")
+	if err != nil {
+		return nil, err
+	}
+
+	// Read all network objects referenced by 'networks'
+	var delegates []*mtypes.DelegateNetConf
+	for _, net := range networks {
+		delegate, err := GetDelegateFromFile(net, confdir)
+		if err != nil {
+			return nil, logging.Errorf("GetDefaultDelegates: failed getting the delegate: %v", err)
+		}
+		delegates = append(delegates, delegate)
+	}
+
+	return delegates, nil
+}
+
+func getCNIConfigFromFile(name string, confdir string) ([]byte, error) {
+	logging.Debugf("getCNIConfigFromFile: %s, %s", name, confdir)
+
+	// In the absence of valid keys in a Spec, the runtime (or
+	// meta-plugin) should load and execute a CNI .configlist
+	// or .config (in that order) file on-disk whose JSON
+	// “name” key matches this Network object’s name.
+
+	// In part, adapted from K8s pkg/kubelet/dockershim/network/cni/cni.go#getDefaultCNINetwork
+	files, err := libcni.ConfFiles(confdir, []string{".conf", ".json", ".conflist"})
+	switch {
+	case err != nil:
+		return nil, logging.Errorf("No networks found in %s", confdir)
+	case len(files) == 0:
+		return nil, logging.Errorf("No networks found in %s", confdir)
+	}
+
+	for _, confFile := range files {
+		var confList *libcni.NetworkConfigList
+		if strings.HasSuffix(confFile, ".conflist") {
+			confList, err = libcni.ConfListFromFile(confFile)
+			if err != nil {
+				return nil, logging.Errorf("Error loading CNI conflist file %s: %v", confFile, err)
+			}
+
+			if confList.Name == name {
+				return confList.Bytes, nil
+			}
+
+		} else {
+			conf, err := libcni.ConfFromFile(confFile)
+			if err != nil {
+				return nil, logging.Errorf("Error loading CNI config file %s: %v", confFile, err)
+			}
+
+			if conf.Network.Name == name {
+				// Ensure the config has a "type" so we know what plugin to run.
+				// Also catches the case where somebody put a conflist into a conf file.
+				if conf.Network.Type == "" {
+					return nil, logging.Errorf("Error loading CNI config file %s: no 'type'; perhaps this is a .conflist?", confFile)
+				}
+				return conf.Bytes, nil
+			}
+		}
+	}
+
+	return nil, logging.Errorf("no network available in the name %s in cni dir %s", name, confdir)
+}
+
+func GetDelegateFromFile(net *mtypes.NetworkSelectionElement, confdir string) (*mtypes.DelegateNetConf, error) {
+	logging.Debugf("getDelegateFromFile: %v, %s", net, confdir)
+	configBytes, err := getCNIConfigFromFile(net.Name, confdir)
+	if err != nil {
+		return nil, logging.Errorf("cniConfigFromNetworkResource: err in getCNIConfigFromFile: %v", err)
+	}
+
+	delegate, err := LoadDelegateNetConf(configBytes, net.InterfaceRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	return delegate, nil
 }

@@ -20,7 +20,8 @@ import (
 
 	"github.com/containernetworking/cni/pkg/types"
 	"github.com/containernetworking/cni/pkg/types/current"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/qyzhaoxun/multus-cni/logging"
 )
 
 // NetConf for cni config file written in json
@@ -35,14 +36,28 @@ type NetConf struct {
 	ConfDir string `json:"confDir"`
 	CNIDir  string `json:"cniDir"`
 	BinDir  string `json:"binDir"`
-	// RawDelegates is private to the NetConf class; use Delegates instead
-	RawDelegates  []map[string]interface{} `json:"delegates"`
-	Delegates     []*DelegateNetConf       `json:"-"`
-	NetStatus     []*NetworkStatus         `json:"-"`
-	Kubeconfig    string                   `json:"kubeconfig"`
-	LogFile       string                   `json:"logFile"`
-	LogLevel      string                   `json:"logLevel"`
-	RuntimeConfig *RuntimeConfig           `json:"runtimeConfig,omitempty"`
+
+	Delegates        []*DelegateNetConf `json:"-"`
+	NetStatus        []*NetworkStatus   `json:"-"`
+	Kubeconfig       string             `json:"kubeconfig"`
+	LogFile          string             `json:"logFile"`
+	LogLevel         string             `json:"logLevel"`
+	RuntimeConfig    *RuntimeConfig     `json:"runtimeConfig,omitempty"`
+	DefaultDelegates string             `json:"defaultDelegates"`
+}
+
+// AddDelegates appends the new delegates to the delegates list
+func (n *NetConf) AddDelegates(newDelegates []*DelegateNetConf) error {
+	logging.Debugf("AddDelegates: %v", newDelegates)
+	n.Delegates = append(n.Delegates, newDelegates...)
+	return nil
+}
+
+// SetDelegates set the new delegates to the delegates list
+func (n *NetConf) SetDelegates(newDelegates []*DelegateNetConf) error {
+	logging.Debugf("SetDelegates: %v", newDelegates)
+	n.Delegates = newDelegates
+	return nil
 }
 
 type RuntimeConfig struct {
@@ -76,31 +91,6 @@ type DelegateNetConf struct {
 
 	// Raw JSON
 	Bytes []byte
-}
-
-type NetworkAttachmentDefinition struct {
-	metav1.TypeMeta `json:",inline"`
-	// Note that ObjectMeta is mandatory, as an object
-	// name is required
-	Metadata metav1.ObjectMeta `json:"metadata,omitempty" description:"standard object metadata"`
-
-	// Specification describing how to invoke a CNI plugin to
-	// add or remove network attachments for a Pod.
-	// In the absence of valid keys in a Spec, the runtime (or
-	// meta-plugin) should load and execute a CNI .configlist
-	// or .config (in that order) file on-disk whose JSON
-	// “name” key matches this Network object’s name.
-	// +optional
-	Spec NetworkAttachmentDefinitionSpec `json:"spec"`
-}
-
-type NetworkAttachmentDefinitionSpec struct {
-	// Config contains a standard JSON-encoded CNI configuration
-	// or configuration list which defines the plugin chain to
-	// execute.  If present, this key takes precedence over
-	// ‘Plugin’.
-	// +optional
-	Config string `json:"config"`
 }
 
 // NetworkSelectionElement represents one element of the JSON format

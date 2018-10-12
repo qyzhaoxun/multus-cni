@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-package types
+package conf
 
 import (
 	"testing"

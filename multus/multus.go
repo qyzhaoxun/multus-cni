@@ -31,6 +31,9 @@ import (
 	cnitypes "github.com/containernetworking/cni/pkg/types"
 	"github.com/containernetworking/cni/pkg/version"
 	"github.com/containernetworking/plugins/pkg/ns"
+	"github.com/pkg/errors"
+
+	"github.com/qyzhaoxun/multus-cni/conf"
 	k8s "github.com/qyzhaoxun/multus-cni/k8sclient"
 	"github.com/qyzhaoxun/multus-cni/logging"
 	"github.com/qyzhaoxun/multus-cni/types"
@@ -73,7 +76,7 @@ func getIfname(delegate *types.DelegateNetConf, argif string, idx int) string {
 
 	// Otherwise construct a unique interface name from the delegate's
 	// position in the delegate list
-	return fmt.Sprintf("net%d", idx)
+	return fmt.Sprintf("eth%d", idx)
 }
 
 func saveDelegates(containerID, dataDir string, delegates []*types.DelegateNetConf) error {
@@ -205,20 +208,25 @@ func delPlugins(exec invoke.Exec, argIfname string, delegates []*types.DelegateN
 		return logging.Errorf("Multus: error in setting CNI_COMMAND to DEL")
 	}
 
+	var errStr string
 	for idx := lastIdx; idx >= 0; idx-- {
 		ifName := getIfname(delegates[idx], argIfname, idx)
 		rt.IfName = ifName
 		if err := delegateDel(exec, ifName, delegates[idx], rt, binDir); err != nil {
-			return err
+			logging.Errorf("delPlugins: error %v in del interface %s with delegate %v", err, ifName, *delegates[idx])
+			errStr = errStr + fmt.Sprintf("error %v in del interface %s with delegate %v;", err, ifName, *delegates[idx])
 		}
 	}
 
+	if errStr != "" {
+		return errors.New(errStr)
+	}
 	return nil
 }
 
 func cmdAdd(args *skel.CmdArgs, exec invoke.Exec, kubeClient k8s.KubeClient) (cnitypes.Result, error) {
 	logging.Debugf("cmdAdd: %v, %v, %v", args, exec, kubeClient)
-	n, err := types.LoadNetConf(args.StdinData)
+	n, err := conf.LoadNetConf(args.StdinData)
 	if err != nil {
 		return nil, logging.Errorf("err in loading netconf: %v", err)
 	}
@@ -228,16 +236,14 @@ func cmdAdd(args *skel.CmdArgs, exec invoke.Exec, kubeClient k8s.KubeClient) (cn
 		return nil, logging.Errorf("Multus: Err in getting k8s args: %v", err)
 	}
 
-	numK8sDelegates, kc, err := k8s.TryLoadK8sDelegates(k8sArgs, n, kubeClient)
+	_, kc, err := k8s.TryLoadK8sDelegates(k8sArgs, n, kubeClient)
 	if err != nil {
 		return nil, logging.Errorf("Multus: Err in loading K8s Delegates k8s args: %v", err)
 	}
 
-	if numK8sDelegates == 0 {
-		// cache the multus config if we have only Multus delegates
-		if err := saveDelegates(args.ContainerID, n.CNIDir, n.Delegates); err != nil {
-			return nil, logging.Errorf("Multus: Err in saving the delegates: %v", err)
-		}
+	// cache the multus config if we have only Multus delegates
+	if err := saveDelegates(args.ContainerID, n.CNIDir, n.Delegates); err != nil {
+		return nil, logging.Errorf("Multus: Err in saving the delegates: %v", err)
 	}
 
 	var result, tmpResult cnitypes.Result
@@ -247,7 +253,7 @@ func cmdAdd(args *skel.CmdArgs, exec invoke.Exec, kubeClient k8s.KubeClient) (cn
 	for idx, delegate := range n.Delegates {
 		lastIdx = idx
 		ifName := getIfname(delegate, args.IfName, idx)
-		rt, _ = types.LoadCNIRuntimeConf(args, k8sArgs, ifName, n.RuntimeConfig)
+		rt, _ = conf.LoadCNIRuntimeConf(args, k8sArgs, ifName, n.RuntimeConfig)
 		tmpResult, err = delegateAdd(exec, ifName, delegate, rt, n.BinDir)
 		if err != nil {
 			break
@@ -260,14 +266,12 @@ func cmdAdd(args *skel.CmdArgs, exec invoke.Exec, kubeClient k8s.KubeClient) (cn
 
 		//create the network status, only in case Multus as kubeconfig
 		if n.Kubeconfig != "" && kc != nil {
-			if kc.Podnamespace != "kube-system" {
-				delegateNetStatus, err := types.LoadNetworkStatus(tmpResult, delegate.Conf.Name, delegate.MasterPlugin)
-				if err != nil {
-					return nil, logging.Errorf("Multus: Err in setting  networks status: %v", err)
-				}
-
-				netStatus = append(netStatus, delegateNetStatus)
+			delegateNetStatus, err := conf.LoadNetworkStatus(tmpResult, delegate.Conf.Name, delegate.MasterPlugin)
+			if err != nil {
+				return nil, logging.Errorf("Multus: Err in setting  networks status: %v", err)
 			}
+
+			netStatus = append(netStatus, delegateNetStatus)
 		}
 	}
 
@@ -279,11 +283,9 @@ func cmdAdd(args *skel.CmdArgs, exec invoke.Exec, kubeClient k8s.KubeClient) (cn
 
 	//set the network status annotation in apiserver, only in case Multus as kubeconfig
 	if n.Kubeconfig != "" && kc != nil {
-		if kc.Podnamespace != "kube-system" {
-			err = k8s.SetNetworkStatus(kc, netStatus)
-			if err != nil {
-				return nil, logging.Errorf("Multus: Err set the networks status: %v", err)
-			}
+		err = k8s.SetNetworkStatus(kc, netStatus)
+		if err != nil {
+			return nil, logging.Errorf("Multus: Err set the networks status: %v", err)
 		}
 	}
 
@@ -292,7 +294,7 @@ func cmdAdd(args *skel.CmdArgs, exec invoke.Exec, kubeClient k8s.KubeClient) (cn
 
 func cmdGet(args *skel.CmdArgs, exec invoke.Exec, kubeClient k8s.KubeClient) (cnitypes.Result, error) {
 	logging.Debugf("cmdGet: %v, %v, %v", args, exec, kubeClient)
-	in, err := types.LoadNetConf(args.StdinData)
+	in, err := conf.LoadNetConf(args.StdinData)
 	if err != nil {
 		return nil, err
 	}
@@ -304,64 +306,31 @@ func cmdGet(args *skel.CmdArgs, exec invoke.Exec, kubeClient k8s.KubeClient) (cn
 
 func cmdDel(args *skel.CmdArgs, exec invoke.Exec, kubeClient k8s.KubeClient) error {
 	logging.Debugf("cmdDel: %v, %v, %v", args, exec, kubeClient)
-	in, err := types.LoadNetConf(args.StdinData)
+	in, err := conf.LoadNetConf(args.StdinData)
 	if err != nil {
 		return err
 	}
-
-	if args.Netns == "" {
-		return nil
-	}
-	netns, err := ns.GetNS(args.Netns)
-	if err != nil {
-		//  if NetNs is passed down by the Cloud Orchestration Engine, or if it called multiple times
-		// so don't return an error if the device is already removed.
-		// https://github.com/kubernetes/kubernetes/issues/43014#issuecomment-287164444
-		_, ok := err.(ns.NSPathNotExistErr)
-		if ok {
-			return nil
-		}
-		return fmt.Errorf("failed to open netns %q: %v", netns, err)
-	}
-	defer netns.Close()
 
 	k8sArgs, err := k8s.GetK8sArgs(args)
 	if err != nil {
 		return logging.Errorf("Multus: Err in getting k8s args: %v", err)
 	}
 
-	numK8sDelegates, kc, err := k8s.TryLoadK8sDelegates(k8sArgs, in, kubeClient)
+	// re-read the scratch multus config if we have only Multus delegates
+	netconfBytes, err := consumeScratchNetConf(args.ContainerID, in.CNIDir)
 	if err != nil {
-		return err
+		if os.IsNotExist(err) {
+			// Per spec should ignore error if resources are missing / already removed
+			return nil
+		}
+		return logging.Errorf("Multus: Err in  reading the delegates: %v", err)
 	}
 
-	if numK8sDelegates == 0 {
-		// re-read the scratch multus config if we have only Multus delegates
-		netconfBytes, err := consumeScratchNetConf(args.ContainerID, in.CNIDir)
-		if err != nil {
-			if os.IsNotExist(err) {
-				// Per spec should ignore error if resources are missing / already removed
-				return nil
-			}
-			return logging.Errorf("Multus: Err in  reading the delegates: %v", err)
-		}
-
-		if err := json.Unmarshal(netconfBytes, &in.Delegates); err != nil {
-			return logging.Errorf("Multus: failed to load netconf: %v", err)
-		}
+	if err := json.Unmarshal(netconfBytes, &in.Delegates); err != nil {
+		return logging.Errorf("Multus: failed to load netconf: %v", err)
 	}
 
-	//unset the network status annotation in apiserver, only in case Multus as kubeconfig
-	if in.Kubeconfig != "" && kc != nil {
-		if kc.Podnamespace != "kube-system" {
-			err := k8s.SetNetworkStatus(kc, nil)
-			if err != nil {
-				return logging.Errorf("Multus: Err unset the networks status: %v", err)
-			}
-		}
-	}
-
-	rt, _ := types.LoadCNIRuntimeConf(args, k8sArgs, "", in.RuntimeConfig)
+	rt, _ := conf.LoadCNIRuntimeConf(args, k8sArgs, "", in.RuntimeConfig)
 	return delPlugins(exec, args.IfName, in.Delegates, len(in.Delegates)-1, rt, in.BinDir)
 }
 
