@@ -10,6 +10,7 @@ spec:
   template:
     metadata:
       annotations:
+        k8s.v1.cni.cncf.io/networks: "tke-eni-cni"
         tke.cloud.tencent.com/vpc-eni-cni-ip: "true"
       labels:
         app: busybox

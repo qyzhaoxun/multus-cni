@@ -7,13 +7,6 @@
       * [Multi-Homed pod](#multi-homed-pod)
       * [Building from source](#building-from-source)
       * [Work flow](#work-flow)
-      * [Usage with Kubernetes CRD based network objects](#usage-with-kubernetes-crd-based-network-objects)
-         * [Creating "Network" resources in Kubernetes](#creating-network-resources-in-kubernetes)
-            * [<strong>CRD based Network objects</strong>](#crd-based-network-objects)
-         * [Configuring Multus to use the kubeconfig](#configuring-multus-to-use-the-kubeconfig)
-         * [Configuring Multus to use kubeconfig and a default network](#configuring-multus-to-use-kubeconfig-and-a-default-network)
-         * [Configuring Pod to use the CRD network objects](#configuring-pod-to-use-the-crd-network-objects)
-         * [Verifying Pod network interfaces](#verifying-pod-network-interfaces)
       * [Using with Multus conf file](#using-with-multus-conf-file)
       * [Logging Options](#logging-options)
       * [Testing Multus CNI](#testing-multus-cni)
@@ -38,42 +31,20 @@ Please check the [CNI](https://github.com/containernetworking/cni) documentation
 
 # Quickstart Guide
 
-Multus may be deployed as a Daemonset, and is provided in this guide along with Flannel. Flannel is deployed as a pod-to-pod network that is used as our "default network". Each network attachment is made in addition to this default network.
+Multus may be deployed as a Daemonset, and is provided in this guide along with cni-bridge. cni-bridge is deployed as a pod-to-pod network that is used as our "default network". Each network attachment is made in addition to this default network.
 
-Firstly, clone this GitHub repository. We'll apply files to `kubectl` from this repo.
+Firstly, deploy cni-bridge Daemonset
+
+```
+$ kubectl create -f https://raw.githubusercontent.com/TencentCloud/cni-bridge-networking/master/deploy/deploy.yaml
+```
+
+Secondly, clone this GitHub repository. We'll apply files to `kubectl` from this repo.
 
 We apply these files as such:
 
 ```
-$ cat ./images/{multus-daemonset.yml,flannel-daemonset.yml} | kubectl apply -f -
-```
-
-Create a CNI configuration loaded as a CRD object, in this case a macvlan CNI configuration is defined. You may replace the `config` field with any valid CNI configuration where the CNI binary is available on the nodes.
-
-```
-cat <<EOF | kubectl create -f -
-apiVersion: "k8s.cni.cncf.io/v1"
-kind: NetworkAttachmentDefinition
-metadata:
-  name: macvlan-conf
-spec:
-  config: '{
-      "cniVersion": "0.3.0",
-      "type": "macvlan",
-      "master": "eth0",
-      "mode": "bridge",
-      "ipam": {
-        "type": "host-local",
-        "subnet": "192.168.1.0/24",
-        "rangeStart": "192.168.1.200",
-        "rangeEnd": "192.168.1.216",
-        "routes": [
-          { "dst": "0.0.0.0/0" }
-        ],
-        "gateway": "192.168.1.1"
-      }
-    }'
-EOF
+$ kubectl create -f ./deploy/v0.1/multus.yaml
 ```
 
 You may then create a pod which attached this additional interface, where the annotation correlates to the `name` in the `NetworkAttachmentDefinition` above.
@@ -85,12 +56,12 @@ kind: Pod
 metadata:
   name: samplepod
   annotations:
-    k8s.v1.cni.cncf.io/networks: macvlan-conf
+    k8s.v1.cni.cncf.io/networks: cni-bridge
 spec:
   containers:
   - name: samplepod
     command: ["/bin/bash", "-c", "sleep 2000000000000"]
-    image: dougbtv/centos-network
+    image: busybox
 EOF
 ```
 
@@ -102,17 +73,6 @@ $ kubectl exec -it samplepod -- ip a
 
 # Kubernetes Network Custom Resource Definition De-facto Standard - Reference implementation
 
-* This project is a reference implementation for Kubernetes Network Custom Resource Definition De-facto Standard. For more information refer [Network Plumbing Working Group Agenda](https://docs.google.com/document/d/1oE93V3SgOGWJ4O1zeD1UmpeToa0ZiiO6LqRAmZBPFWM/edit)
-* Kubernetes Network Custom Resource Definition De-facto Standard [documentation link](https://docs.google.com/document/d/1Ny03h6IDVy_e_vmElOqR7UdTPAG_RNydhVE1Kx54kFQ/edit)
-* Reference implementation support following modes
-   * CNI config JSON in network object
-   * Not using CNI config (“thick” plugin usecase)
-   * CNI configuration stored in on-disk file
-   > refer the section 3.2 Network Object Definition for more details in Kubernetes Network Custom Resource Definition De-facto Standard
-* Refer the reference implementation presentation and demo details - [link](https://docs.google.com/presentation/d/1dbCin6MnhK-BjjcVun5YiPTL99VA2uSiyWAtWAPNlIc/edit?usp=sharing)
-* Release version from v3.0 is not compatible with v1.0 and v2.0 version Network Object CRD
-  * [MULTUS CNI plugin](#multus-cni-plugin)specifications.
-
 ## Multi-Homed pod
 <p align="center">
    <img src="doc/images/multus_cni_pod.png" width="1008" />
@@ -123,7 +83,7 @@ $ kubectl exec -it samplepod -- ip a
 **This plugin requires Go 1.8 (or later) to build.**
 
 ```
-#./build
+$ make build
 ```
 
 ## Work flow
@@ -136,7 +96,7 @@ $ kubectl exec -it samplepod -- ip a
 - name (string, required): the name of the network
 - type (string, required): &quot;multus&quot;
 - kubeconfig (string, optional): kubeconfig file for the out of cluster communication with kube-apiserver. See the example [kubeconfig](https://github.com/qyzhaoxun/multus-cni/blob/master/doc/node-kubeconfig.yaml)
-- delegates (([]map,required): number of delegate details in the Multus
+- defaultDelegates (string,optional): default delegates in the Multus. If pod without network annotations, multus will use delegates to load cni configurations and config pod ips. See the example [defaultDelegates](https://github.com/qyzhaoxun/multus-cni/blob/master/doc/default-delegates.md)
 - capabilities ({}list, optional): [capabilities](https://github.com/containernetworking/cni/blob/master/CONVENTIONS.md#dynamic-plugin-specific-fields-capabilities--runtime-configuration) supported by at least one of the delegates. (NOTE: Multus only supports portMappings capability for now). See the [example](https://github.com/qyzhaoxun/multus-cni/blob/master/examples/multus-ptp-portmap.conf).
 
 ## Usage with Kubernetes CRD based network objects
@@ -147,131 +107,6 @@ Kubelet is responsible for establishing network interfaces for pods; it does thi
    <img src="doc/images/multus_crd_usage_diagram.JPG" width="1008" />
 </p>
 
-### Creating &quot;Network&quot; resources in Kubernetes
-
-You may wish to create the `network-attachment-definition` manually if you haven't installed using the daemonset technique, which includes the CRD, and you can verify if it's loaded with `kubectl get crd` and look for the presence of `network-attachment-definition`.
-
-1. Create a Custom Resource Definition (CRD) `crdnetwork.yaml`; for the network object using the YAML from the examples directory.
-
-```
-$ kubectl create -f ./examples/crd.yml
-customresourcedefinition.apiextensions.k8s.io/network-attachment-definitions.k8s.cni.cncf.io created
-```
-
-3. Run kubectl get command to check the Network CRD creation
-
-```
-$ kubectl get crd
-NAME                      KIND
-network-attachment-definitions.k8s.cni.cncf.io   CustomResourceDefinition.v1beta1.apiextensions.k8s.io
-```
-
-### Creating CRD network resources in Kubernetes
-
-1. After creating CRD network object you can create network resources in Kubernetes. These network resources may contain additional underlying CNI plugin parameters given in JSON format. In the following example shown below the args field contains parameters that will be passed into Flannel plugin.
-
-2. Save the following YAML to flannel-network.yaml
-
-```
-apiVersion: "k8s.cni.cncf.io/v1"
-kind: NetworkAttachmentDefinition
-metadata:
-  name: flannel-networkobj
-spec:
-  config: '{
-    "cniVersion": "0.3.0",
-    "type": "flannel",
-    "delegate": {
-      "isDefaultGateway": true
-    }
-  }'
-```
-
-3. Create the custom resource definition
-
-```
-$ kubectl create -f ./flannel-network.yaml
-network "flannel-networkobj" created
-
-$ kubectl get net-attach-def
-NAME                         AGE
-flannel-networkobj           26s
-```
-
-4. Get the custom network object details
-
-```
-apiVersion: k8s.cni.cncf.io/v1
-kind: NetworkAttachmentDefinition
-metadata:
-  clusterName: ""
-  creationTimestamp: 2018-05-17T09:13:20Z
-  deletionGracePeriodSeconds: null
-  deletionTimestamp: null
-  initializers: null
-  name: flannel-networkobj
-  namespace: default
-  resourceVersion: "21176114"
-  selfLink: /apis/k8s.cni.cncf.io/v1/namespaces/default/networks/flannel-networkobj
-  uid: 8ac8f873-59b2-11e8-8308-a4bf01024e6f
-spec:
-  config: '{ "cniVersion": "0.3.0", "type": "flannel", "delegate": { "isDefaultGateway":
-    true } }'
-```
-
-5. Save the following YAML to sriov-network.yaml to creating sriov network object. ( Refer to [Intel - SR-IOV CNI](https://github.com/Intel-Corp/sriov-cni) or contact @kural in [Intel-Corp Slack](https://intel-corp.herokuapp.com/) for running the DPDK based workloads in Kubernetes)
-
-```
-apiVersion: "k8s.cni.cncf.io/v1"
-kind: NetworkAttachmentDefinition
-metadata:
-  name: sriov-conf
-spec:
-  config: '{
-    "type": "sriov",
-    "if0": "enp12s0f1",
-    "ipam": {
-            "type": "host-local",
-            "subnet": "10.56.217.0/24",
-            "rangeStart": "10.56.217.171",
-            "rangeEnd": "10.56.217.181",
-            "routes": [
-                    { "dst": "0.0.0.0/0" }
-            ],
-            "gateway": "10.56.217.1"
-    }
-  }'
-```
-
-6. Likewise save the following YAML to sriov-vlanid-l2enable-network.yaml to create another sriov based network object:
-
-```
-apiVersion: "k8s.cni.cncf.io/v1"
-kind: NetworkAttachmentDefinition
-metadata:
-  name: sriov-vlanid-l2enable-conf
-spec:
-  config: '{
-    "type": "sriov",
-    "if0": "enp2s0",
-    "vlan": 210,
-    "l2enable": true
-  }'
-```
-
-7. Follow step 3 above to create &quot;sriov-vlanid-l2enable-conf&quot; and &quot;sriov-conf&quot; network objects
-
-8. View network objects using kubectl
-
-```
-# kubectl get net-attach-def
-NAME                         AGE
-flannel-networkobj           29m
-sriov-conf                   6m
-sriov-vlanid-l2enable-conf   2m
-
-```
-
 ### Configuring Multus to use the kubeconfig
 
 1. Create a Mutlus CNI configuration file on each Kubernetes node. This file should be created in: /etc/cni/net.d/multus-cni.conf with the content shown below. Use only the absolute path to point to the kubeconfig file (as it may change depending upon your cluster env). We are assuming all CNI plugin binaries are default location (`/opt/cni/bin dir`)
@@ -280,29 +115,26 @@ sriov-vlanid-l2enable-conf   2m
 {
     "name": "node-cni-network",
     "type": "multus",
-    "kubeconfig": "/etc/kubernetes/node-kubeconfig.yaml"
+    "kubeconfig": "/root/.kube/config"
 }
 ```
 
 ### Configuring Multus to use kubeconfig and a default network
 
-1. Many users want Kubernetes default networking feature along with network objects. Refer to issues [#14](https://github.com/qyzhaoxun/multus-cni/issues/14) &amp; [#17](https://github.com/qyzhaoxun/multus-cni/issues/17) for more information. In the following Multus configuration, Weave act as the default network in the absence of network field in the pod metadata annotation.
+1. Many users want Kubernetes default networking feature along with network objects. In the following Multus configuration, cni-bridge act as the default network in the absence of network field in the pod metadata annotation.
 
 ```
 {
     "name": "node-cni-network",
     "type": "multus",
-    "kubeconfig": "/etc/kubernetes/node-kubeconfig.yaml",
-    "delegates": [{
-        "type": "weave-net",
-        "hairpinMode": true
-    }]
+    "kubeconfig": "/root/.kube/config",
+    "defaultDelegates": "cni-bridge"
 }
 ```
 
 Configurations referenced in annotations are created in addition to the default network.
 
-### Configuring Pod to use the CRD network objects
+### Configuring Pod to use multi cni
 
 1. Save the following YAML to pod-multi-network.yaml. In this case flannel-conf network object acts as the primary network.
 ```
@@ -365,7 +197,7 @@ lo        Link encap:Local Loopback
           collisions:0 txqueuelen:1
           RX bytes:0 (0.0 B)  TX bytes:0 (0.0 B)
 
-net0      Link encap:Ethernet  HWaddr 06:21:91:2D:74:B9
+eth1      Link encap:Ethernet  HWaddr 06:21:91:2D:74:B9
           inet addr:192.168.42.3  Bcast:0.0.0.0  Mask:255.255.255.0
           inet6 addr: fe80::421:91ff:fe2d:74b9/64 Scope:Link
           UP BROADCAST RUNNING MULTICAST  MTU:1450  Metric:1
@@ -374,7 +206,7 @@ net0      Link encap:Ethernet  HWaddr 06:21:91:2D:74:B9
           collisions:0 txqueuelen:0
           RX bytes:0 (0.0 B)  TX bytes:648 (648.0 B)
 
-net1      Link encap:Ethernet  HWaddr D2:94:98:82:00:00
+eth2      Link encap:Ethernet  HWaddr D2:94:98:82:00:00
           inet addr:10.56.217.171  Bcast:0.0.0.0  Mask:255.255.255.0
           inet6 addr: fe80::d094:98ff:fe82:0/64 Scope:Link
           UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
@@ -396,8 +228,8 @@ north     Link encap:Ethernet  HWaddr BE:F2:48:42:83:12
 | --- | --- |
 | lo | loopback |
 | eth0 | weave network interface |
-| net0 | Flannel network tap interface |
-| net1 | VF0 of NIC 1 assigned to the container by [Intel - SR-IOV CNI](https://github.com/intel/sriov-cni) plugin |
+| eth1 | Flannel network tap interface |
+| eth2 | VF0 of NIC 1 assigned to the container by [Intel - SR-IOV CNI](https://github.com/intel/sriov-cni) plugin |
 | north | VF0 of NIC 2 assigned with VLAN ID 210 to the container by SR-IOV CNI plugin |
 
 2. Check the vlan ID of the NIC 2 VFs
@@ -417,46 +249,11 @@ north     Link encap:Ethernet  HWaddr BE:F2:48:42:83:12
 Given the following network configuration:
 
 ```
-# tee /etc/cni/net.d/multus-cni.conf <<-'EOF'
+# tee /etc/cni/net.d/00-multus-cni.conf <<-'EOF'
 {
     "name": "multus-demo-network",
     "type": "multus",
-    "delegates": [
-        {
-                "type": "sriov",
-                #part of sriov plugin conf
-                "if0": "enp12s0f0",
-                "ipam": {
-                        "type": "host-local",
-                        "subnet": "10.56.217.0/24",
-                        "rangeStart": "10.56.217.131",
-                        "rangeEnd": "10.56.217.190",
-                        "routes": [
-                                { "dst": "0.0.0.0/0" }
-                        ],
-                        "gateway": "10.56.217.1"
-                }
-        },
-        {
-                "type": "ptp",
-                "ipam": {
-                        "type": "host-local",
-                        "subnet": "10.168.1.0/24",
-                        "rangeStart": "10.168.1.11",
-                        "rangeEnd": "10.168.1.20",
-                        "routes": [
-                                { "dst": "0.0.0.0/0" }
-                        ],
-                        "gateway": "10.168.1.1"
-                }
-        },
-        {
-                "type": "flannel",
-                "delegate": {
-                        "isDefaultGateway": true
-                }
-        }
-    ]
+    "defaultDelegates": "cni-bridge"
 }
 EOF
 ```
@@ -555,9 +352,9 @@ pod "multus-test" created
     link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
 3: eth0@if41: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue
     link/ether 26:52:6b:d8:44:2d brd ff:ff:ff:ff:ff:ff
-20: net0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq qlen 1000
+20: eth1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq qlen 1000
     link/ether f6:fb:21:4f:1d:63 brd ff:ff:ff:ff:ff:ff
-21: net1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq qlen 1000
+21: eth2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq qlen 1000
     link/ether 76:13:b1:60:00:00 brd ff:ff:ff:ff:ff:ff
 ```
 
@@ -565,8 +362,8 @@ pod "multus-test" created
 | --- | --- |
 | lo | loopback |
 | eth0@if41 | Flannel network tap interface |
-| net0 | VF assigned to the container by [SR-IOV CNI](https://github.com/Intel-Corp/sriov-cni) plugin |
-| net1 | ptp localhost interface |
+| eth1 | VF assigned to the container by [SR-IOV CNI](https://github.com/Intel-Corp/sriov-cni) plugin |
+| eth2 | ptp localhost interface |
 
 ## Multus additional plugins
 
