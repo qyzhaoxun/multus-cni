@@ -71,8 +71,6 @@ You may now inspect the pod and see that there is an additional interface config
 $ kubectl exec -it samplepod -- ip a
 ```
 
-# Kubernetes Network Custom Resource Definition De-facto Standard - Reference implementation
-
 ## Multi-Homed pod
 <p align="center">
    <img src="doc/images/multus_cni_pod.png" width="1008" />
@@ -98,14 +96,6 @@ $ make build
 - kubeconfig (string, optional): kubeconfig file for the out of cluster communication with kube-apiserver. See the example [kubeconfig](https://github.com/qyzhaoxun/multus-cni/blob/master/doc/node-kubeconfig.yaml)
 - defaultDelegates (string,optional): default delegates in the Multus. If pod without network annotations, multus will use delegates to load cni configurations and config pod ips. See the example [defaultDelegates](https://github.com/qyzhaoxun/multus-cni/blob/master/doc/default-delegates.md)
 - capabilities ({}list, optional): [capabilities](https://github.com/containernetworking/cni/blob/master/CONVENTIONS.md#dynamic-plugin-specific-fields-capabilities--runtime-configuration) supported by at least one of the delegates. (NOTE: Multus only supports portMappings capability for now). See the [example](https://github.com/qyzhaoxun/multus-cni/blob/master/examples/multus-ptp-portmap.conf).
-
-## Usage with Kubernetes CRD based network objects
-
-Kubelet is responsible for establishing network interfaces for pods; it does this by invoking its configured CNI plugin. When Multus is invoked it retrieves network references from Pod annotation. Multus then uses these network references to get network configurations. Network configurations are defined as Kubernetes Custom Resource Object (CRD). These configurations describe which CNI plugins to invoke and what their configurations are. The order of plugin invocation is important as it identifies the primary plugin. This order is taken from network object references given in a Pod spec.
-
-<p align="center">
-   <img src="doc/images/multus_crd_usage_diagram.JPG" width="1008" />
-</p>
 
 ### Configuring Multus to use the kubeconfig
 
