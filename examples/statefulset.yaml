@@ -1,0 +1,21 @@
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  annotations:
+    tke.cloud.tencent.com/enable-static-ip: "true"
+  name: busybox
+spec:
+  serviceName: "busybox"
+  replicas: 3
+  template:
+    metadata:
+      annotations:
+        tke.cloud.tencent.com/vpc-eni-cni-ip: "true"
+      labels:
+        app: busybox
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: busybox
+        image: busybox
+        command: ["sleep", "9989829989"]

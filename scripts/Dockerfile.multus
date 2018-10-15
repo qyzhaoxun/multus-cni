@@ -1,0 +1,9 @@
+FROM alpine:3.6
+
+RUN apk add --no-cache ca-certificates
+
+COPY bin/multus /
+COPY multus/00-multus.conf /
+COPY scripts/install-multus.sh /
+
+ENTRYPOINT ["/install-multus.sh"]
