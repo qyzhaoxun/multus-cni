@@ -14,17 +14,17 @@
 2. multi cni names
 
 ```
-  'cni-bridge,tke-eni-cni'
+  'tke-bridge,tke-eni-cni'
 ```
 
 3. multi cni names with interface name
 
 ```
-  'cni-bridge,tke-eni-cni@net0'
+  'tke-bridge,tke-eni-cni@net0'
 ```
 
 4. single cni name
 
 ```
-    'cni-bridge'
+    'tke-bridge'
 ```

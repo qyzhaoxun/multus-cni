@@ -31,12 +31,12 @@ Please check the [CNI](https://github.com/containernetworking/cni) documentation
 
 # Quickstart Guide
 
-Multus may be deployed as a Daemonset, and is provided in this guide along with cni-bridge. cni-bridge is deployed as a pod-to-pod network that is used as our "default network". Each network attachment is made in addition to this default network.
+Multus may be deployed as a Daemonset, and is provided in this guide along with tke-bridge. tke-bridge is deployed as a pod-to-pod network that is used as our "default network". Each network attachment is made in addition to this default network.
 
-Firstly, deploy cni-bridge Daemonset
+Firstly, deploy tke-bridge Daemonset
 
 ```
-$ kubectl create -f https://raw.githubusercontent.com/TencentCloud/cni-bridge-networking/master/deploy/deploy.yaml
+$ kubectl create -f https://raw.githubusercontent.com/qyzhaoxun/tke-bridge-agent/master/deploy/v0.1/tke-bridge-agent.yaml
 ```
 
 Secondly, clone this GitHub repository. We'll apply files to `kubectl` from this repo.
@@ -56,7 +56,7 @@ kind: Pod
 metadata:
   name: samplepod
   annotations:
-    k8s.v1.cni.cncf.io/networks: cni-bridge
+    k8s.v1.cni.cncf.io/networks: tke-bridge
 spec:
   containers:
   - name: samplepod
@@ -111,14 +111,14 @@ $ make build
 
 ### Configuring Multus to use kubeconfig and a default network
 
-1. Many users want Kubernetes default networking feature along with network objects. In the following Multus configuration, cni-bridge act as the default network in the absence of network field in the pod metadata annotation.
+1. Many users want Kubernetes default networking feature along with network objects. In the following Multus configuration, tke-bridge act as the default network in the absence of network field in the pod metadata annotation.
 
 ```
 {
     "name": "node-cni-network",
     "type": "multus",
     "kubeconfig": "/root/.kube/config",
-    "defaultDelegates": "cni-bridge"
+    "defaultDelegates": "tke-bridge"
 }
 ```
 
@@ -243,7 +243,7 @@ Given the following network configuration:
 {
     "name": "multus-demo-network",
     "type": "multus",
-    "defaultDelegates": "cni-bridge"
+    "defaultDelegates": "tke-bridge"
 }
 EOF
 ```
