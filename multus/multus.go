@@ -212,8 +212,8 @@ func delegateDel(exec invoke.Exec, ifName string, delegateConf *types.DelegateNe
 	return nil
 }
 
-func delPlugins(exec invoke.Exec, delegates []*types.DelegateNetConf, lastIdx int, rt *libcni.RuntimeConf, binDir string) error {
-	logging.Debugf("delPlugins: %v, %s, %v, %d, %v, %s", exec, delegates, lastIdx, rt, binDir)
+func delPlugins(exec invoke.Exec, argsIfname string, delegates []*types.DelegateNetConf, lastIdx int, rt *libcni.RuntimeConf, binDir string) error {
+	logging.Debugf("delPlugins: %v, %s, %v, %d, %v, %s", exec, argsIfname, delegates, lastIdx, rt, binDir)
 	if os.Setenv("CNI_COMMAND", "DEL") != nil {
 		return logging.Errorf("Multus: error in setting CNI_COMMAND to DEL")
 	}
@@ -221,6 +221,9 @@ func delPlugins(exec invoke.Exec, delegates []*types.DelegateNetConf, lastIdx in
 	var errStr string
 	for idx := lastIdx; idx >= 0; idx-- {
 		ifName := delegates[idx].IfnameRequest
+		if ifName == "" {
+			ifName = argsIfname
+		}
 		rt.IfName = ifName
 		if err := delegateDel(exec, ifName, delegates[idx], rt, binDir); err != nil {
 			logging.Errorf("delPlugins: error %v in del interface %s with delegate %v", err, ifName, *delegates[idx])
@@ -343,7 +346,7 @@ func cmdAdd(args *skel.CmdArgs, exec invoke.Exec, kubeClient k8s.KubeClient) (cn
 
 	if err != nil {
 		// Ignore errors; DEL must be idempotent anyway
-		_ = delPlugins(exec, n.Delegates, idx, rt, n.BinDir)
+		_ = delPlugins(exec, "", n.Delegates, idx, rt, n.BinDir)
 
 		// ignore error
 		_ = cleanNetconf(args.ContainerID, n.CNIDir)
@@ -400,7 +403,7 @@ func cmdDel(args *skel.CmdArgs, exec invoke.Exec, kubeClient k8s.KubeClient) err
 	}
 
 	rt, _ := conf.LoadCNIRuntimeConf(args, k8sArgs, "", in.RuntimeConfig)
-	return delPlugins(exec, in.Delegates, len(in.Delegates)-1, rt, in.BinDir)
+	return delPlugins(exec, args.IfName, in.Delegates, len(in.Delegates)-1, rt, in.BinDir)
 }
 
 func main() {
