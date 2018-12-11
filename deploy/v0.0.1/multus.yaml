@@ -19,7 +19,7 @@ spec:
     spec:
       hostNetwork: true
       containers:
-      - image: ccr.ccs.tencentyun.com/tke-cni/multus-cni:v0.1
+      - image: ccr.ccs.tencentyun.com/tke-cni/multus-cni:v0.0.1
         imagePullPolicy: Always
         name: multus-cni
         volumeMounts:
