@@ -79,7 +79,7 @@ func LoadDelegateNetConf(bytes []byte, ifnameRequest string) (*mtypes.DelegateNe
 
 func LoadCNIRuntimeConf(args *skel.CmdArgs, k8sArgs *mtypes.K8sArgs, ifName string, rc *mtypes.RuntimeConfig) (*libcni.RuntimeConf, error) {
 
-	logging.Debugf("LoadCNIRuntimeConf: %v, %v, %s, %v", args, k8sArgs, ifName, rc)
+	logging.Debugf("LoadCNIRuntimeConf: %v, %s, %v", k8sArgs, ifName, rc)
 	// In part, adapted from K8s pkg/kubelet/dockershim/network/cni/cni.go#buildCNIRuntimeConf
 	// Todo
 	// ingress, egress and bandwidth capability features as same as kubelet.
@@ -143,7 +143,6 @@ func LoadNetworkStatus(r types.Result, netName string, defaultNet bool) (*mtypes
 func LoadNetConf(bytes []byte) (*mtypes.NetConf, error) {
 	netconf := &mtypes.NetConf{}
 
-	logging.Debugf("LoadNetConf: %s", string(bytes))
 	if err := json.Unmarshal(bytes, netconf); err != nil {
 		return nil, logging.Errorf("failed to load netconf: %v", err)
 	}

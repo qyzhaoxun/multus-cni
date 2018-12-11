@@ -237,7 +237,9 @@ func delPlugins(exec invoke.Exec, argsIfname string, delegates []*types.Delegate
 }
 
 func cmdAdd(args *skel.CmdArgs, exec invoke.Exec, kubeClient k8s.KubeClient) (cnitypes.Result, error) {
-	logging.Debugf("cmdAdd: %v, %v, %v", args, exec, kubeClient)
+	logging.Infof("cmdAdd: {containerId %s, netNs %s, ifName %s, args %s, path %s, stdinData %s}, %v, %v",
+		args.ContainerID, args.Netns, args.IfName, args.Args, args.Path, string(args.StdinData), exec, kubeClient)
+
 	n, err := conf.LoadNetConf(args.StdinData)
 	if err != nil {
 		return nil, logging.Errorf("cmdAdd: err in loading netconf: %v", err)
@@ -364,7 +366,9 @@ func cmdAdd(args *skel.CmdArgs, exec invoke.Exec, kubeClient k8s.KubeClient) (cn
 }
 
 func cmdGet(args *skel.CmdArgs, exec invoke.Exec, kubeClient k8s.KubeClient) (cnitypes.Result, error) {
-	logging.Debugf("cmdGet: %v, %v, %v", args, exec, kubeClient)
+	logging.Infof("cmdGet: {containerId %s, netNs %s, ifName %s, args %s, path %s, stdinData %s}, %v, %v",
+		args.ContainerID, args.Netns, args.IfName, args.Args, args.Path, string(args.StdinData), exec, kubeClient)
+
 	in, err := conf.LoadNetConf(args.StdinData)
 	if err != nil {
 		return nil, err
@@ -376,7 +380,9 @@ func cmdGet(args *skel.CmdArgs, exec invoke.Exec, kubeClient k8s.KubeClient) (cn
 }
 
 func cmdDel(args *skel.CmdArgs, exec invoke.Exec, kubeClient k8s.KubeClient) error {
-	logging.Debugf("cmdDel: %v, %v, %v", args, exec, kubeClient)
+	logging.Infof("cmdDel: {containerId %s, netNs %s, ifName %s, args %s, path %s, stdinData %s}, %v, %v",
+		args.ContainerID, args.Netns, args.IfName, args.Args, args.Path, string(args.StdinData), exec, kubeClient)
+
 	in, err := conf.LoadNetConf(args.StdinData)
 	if err != nil {
 		return err

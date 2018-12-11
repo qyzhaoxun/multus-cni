@@ -40,6 +40,7 @@ var loggingFp *os.File
 var loggingLevel Level
 
 const defaultTimestampFormat = time.RFC3339
+const defaultLogPath = "/tmp/multus-cni.log"
 
 func (l Level) String() string {
 	switch l {
@@ -135,7 +136,7 @@ func SetLogFile(filename string) {
 }
 
 func init() {
-	loggingStderr = true
-	loggingFp = nil
-	loggingLevel = PanicLevel
+	SetLogStderr(true)
+	SetLogFile(defaultLogPath)
+	SetLogLevel("info")
 }
