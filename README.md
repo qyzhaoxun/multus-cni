@@ -36,14 +36,15 @@ Multus may be deployed as a Daemonset, and is provided in this guide along with 
 Firstly, deploy tke-bridge Daemonset
 
 ```
-$ kubectl create -f https://raw.githubusercontent.com/qyzhaoxun/tke-bridge-agent/master/deploy/v0.1/tke-bridge-agent.yaml
+$ kubectl create -f https://raw.githubusercontent.com/qyzhaoxun/tke-bridge-agent/master/deploy/v0.0.1/tke-bridge-agent.yaml
 ```
 
 Secondly, deploy multus-cni Daemonset
 
 ```
-$ kubectl create -f https://raw.githubusercontent.com/qyzhaoxun/multus-cni/master/deploy/v0.1/multus.yaml
+$ kubectl create -f https://raw.githubusercontent.com/qyzhaoxun/multus-cni/master/deploy/v0.0.1/multus.yaml
 ```
+
 
 You may then create a pod which attached this additional interface, where the annotation correlates to the `name` in the `NetworkAttachmentDefinition` above.
 
