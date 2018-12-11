@@ -71,18 +71,15 @@ func (d *defaultKubeClient) UpdatePodStatus(pod *v1.Pod) (*v1.Pod, error) {
 }
 
 func setKubeClientInfo(c *clientInfo, client KubeClient, k8sArgs *types.K8sArgs) {
-	logging.Debugf("setKubeClientInfo: %v, %v, %v", c, client, k8sArgs)
 	c.Client = client
 	c.Podnamespace = string(k8sArgs.K8S_POD_NAMESPACE)
 	c.Podname = string(k8sArgs.K8S_POD_NAME)
 }
 
 func SetNetworkStatus(k *clientInfo, netStatus []*types.NetworkStatus) error {
-
-	logging.Debugf("SetNetworkStatus: %v, %v", k, netStatus)
 	pod, err := k.Client.GetPod(k.Podnamespace, k.Podname)
 	if err != nil {
-		return logging.Errorf("SetNetworkStatus: failed to query the pod %v in out of cluster comm: %v", k.Podname, err)
+		return logging.Errorf("SetNetworkStatus: failed to query the pod %s in out of cluster comm: %v", k.Podname, err)
 	}
 
 	var ns string
@@ -100,14 +97,14 @@ func SetNetworkStatus(k *clientInfo, netStatus []*types.NetworkStatus) error {
 	}
 	_, err = setPodNetworkAnnotation(k.Client, k.Podnamespace, pod, ns)
 	if err != nil {
-		return logging.Errorf("SetNetworkStatus: failed to update the pod %v in out of cluster comm: %v", k.Podname, err)
+		return logging.Errorf("SetNetworkStatus: failed to update the pod %s in out of cluster comm: %v", k.Podname, err)
 	}
 
 	return nil
 }
 
 func setPodNetworkAnnotation(client KubeClient, namespace string, pod *v1.Pod, networkstatus string) (*v1.Pod, error) {
-	logging.Debugf("setPodNetworkAnnotation: %v, %s, %v, %s", client, namespace, pod, networkstatus)
+	logging.Infof("setPodNetworkAnnotation: %s/%s, %s", namespace, pod.Name, networkstatus)
 	//if pod annotations is empty, make sure it allocatable
 	if len(pod.Annotations) == 0 {
 		pod.Annotations = make(map[string]string)
@@ -137,17 +134,18 @@ func setPodNetworkAnnotation(client KubeClient, namespace string, pod *v1.Pod, n
 func getPodNetworkAnnotation(client KubeClient, k8sArgs *types.K8sArgs) (string, string, error) {
 	var err error
 
-	logging.Debugf("getPodNetworkAnnotation: %v, %v", client, k8sArgs)
 	pod, err := client.GetPod(string(k8sArgs.K8S_POD_NAMESPACE), string(k8sArgs.K8S_POD_NAME))
 	if err != nil {
 		return "", "", logging.Errorf("getPodNetworkAnnotation: failed to query the pod %v in out of cluster comm: %v", string(k8sArgs.K8S_POD_NAME), err)
 	}
 
+	logging.Infof("getPodNetworkAnnotation: %s/%s, %s", pod.Namespace, pod.Name, pod.Annotations[CNINetworksAnnotation])
+
 	return pod.Annotations[CNINetworksAnnotation], pod.ObjectMeta.Namespace, nil
 }
 
 func getKubernetesDelegate(client KubeClient, net *types.NetworkSelectionElement, confdir string) (*types.DelegateNetConf, error) {
-	logging.Debugf("getKubernetesDelegate: %v, %v, %s", client, net, confdir)
+	logging.Debugf("getKubernetesDelegate: %#v, %s", net, confdir)
 	delegate, err := conf.GetDelegateFromFile(net, confdir)
 	if err != nil {
 		return nil, err
@@ -164,7 +162,7 @@ type KubeClient interface {
 func GetK8sArgs(args *skel.CmdArgs) (*types.K8sArgs, error) {
 	k8sArgs := &types.K8sArgs{}
 
-	logging.Debugf("GetK8sNetwork: %v", args)
+	logging.Debugf("GetK8sArgs: %s", args.Args)
 	err := cnitypes.LoadArgs(args.Args, k8sArgs)
 	if err != nil {
 		return nil, err
@@ -212,7 +210,6 @@ func TryLoadK8sDelegates(k8sArgs *types.K8sArgs, conf *types.NetConf, kubeClient
 }
 
 func GetK8sClient(kubeconfig string, kubeClient KubeClient) (KubeClient, error) {
-	logging.Debugf("GetK8sClient: %s, %v", kubeconfig, kubeClient)
 	// If we get a valid kubeClient (eg from testcases) just return that
 	// one.
 	if kubeClient != nil {

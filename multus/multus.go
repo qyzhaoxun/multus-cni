@@ -46,7 +46,7 @@ const (
 )
 
 func saveScratchNetConf(containerID, dataDir string, netconf []byte) error {
-	logging.Debugf("saveScratchNetConf: %s, %s, %s", containerID, dataDir, string(netconf))
+	logging.Infof("saveScratchNetConf: %s, %s, %s", containerID, dataDir, string(netconf))
 	if err := os.MkdirAll(dataDir, 0700); err != nil {
 		return logging.Errorf("failed to create the multus data directory(%q): %v", dataDir, err)
 	}
@@ -62,7 +62,7 @@ func saveScratchNetConf(containerID, dataDir string, netconf []byte) error {
 }
 
 func consumeScratchNetConf(containerID, dataDir string) ([]byte, error) {
-	logging.Debugf("consumeScratchNetConf: %s, %s", containerID, dataDir)
+	logging.Infof("consumeScratchNetConf: %s, %s", containerID, dataDir)
 	path := filepath.Join(dataDir, containerID)
 	defer os.Remove(path)
 
@@ -90,7 +90,6 @@ func cleanNetconf(containerID, dataDir string) error {
 //}
 
 func saveDelegates(containerID, dataDir string, delegates []*types.DelegateNetConf) error {
-	logging.Debugf("saveDelegates: %s, %s, %v", containerID, dataDir, delegates)
 	delegatesBytes, err := json.Marshal(delegates)
 	if err != nil {
 		return logging.Errorf("error serializing delegate netconf: %v", err)
@@ -164,7 +163,7 @@ func conflistDel(rt *libcni.RuntimeConf, rawnetconflist []byte, binDir string) e
 }
 
 func delegateAdd(exec invoke.Exec, ifName string, delegate *types.DelegateNetConf, rt *libcni.RuntimeConf, binDir string) (cnitypes.Result, error) {
-	logging.Debugf("delegateAdd: %v, %s, %v, %v, %s", exec, ifName, delegate, rt, binDir)
+	logging.Debugf("delegateAdd: %v, %s, %s, %v, %s", exec, ifName, delegate, rt, binDir)
 	if os.Setenv("CNI_IFNAME", ifName) != nil {
 		return nil, logging.Errorf("Multus: error in setting CNI_IFNAME")
 	}
@@ -191,7 +190,7 @@ func delegateAdd(exec invoke.Exec, ifName string, delegate *types.DelegateNetCon
 }
 
 func delegateDel(exec invoke.Exec, ifName string, delegateConf *types.DelegateNetConf, rt *libcni.RuntimeConf, binDir string) error {
-	logging.Debugf("delegateDel: %v, %s, %v, %v, %s", exec, ifName, delegateConf, rt, binDir)
+	logging.Debugf("delegateDel: %v, %s, %s, %v, %s", exec, ifName, delegateConf, rt, binDir)
 	if os.Setenv("CNI_IFNAME", ifName) != nil {
 		return logging.Errorf("Multus: error in setting CNI_IFNAME")
 	}
@@ -213,7 +212,7 @@ func delegateDel(exec invoke.Exec, ifName string, delegateConf *types.DelegateNe
 }
 
 func delPlugins(exec invoke.Exec, argsIfname string, delegates []*types.DelegateNetConf, lastIdx int, rt *libcni.RuntimeConf, binDir string) error {
-	logging.Debugf("delPlugins: %v, %s, %v, %d, %v, %s", exec, argsIfname, delegates, lastIdx, rt, binDir)
+	logging.Debugf("delPlugins: %v, %s, %d", exec, argsIfname, lastIdx)
 	if os.Setenv("CNI_COMMAND", "DEL") != nil {
 		return logging.Errorf("Multus: error in setting CNI_COMMAND to DEL")
 	}
@@ -300,7 +299,7 @@ func cmdAdd(args *skel.CmdArgs, exec invoke.Exec, kubeClient k8s.KubeClient) (cn
 		}
 	}
 
-	logging.Debugf("cmdAdd: get last index ifname %s%d", IfNamePrefix, lastIdx)
+	logging.Infof("cmdAdd: get last index ifname %s%d", IfNamePrefix, lastIdx)
 
 	// set other ifName index
 	for _, delegate := range n.Delegates {

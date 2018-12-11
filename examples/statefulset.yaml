@@ -2,7 +2,7 @@ apiVersion: apps/v1beta1
 kind: StatefulSet
 metadata:
   annotations:
-    tke.cloud.tencent.com/enable-static-ip: "true"
+    tke.cloud.tencent.com/enable-static-ip: ""
   name: busybox
 spec:
   serviceName: "busybox"

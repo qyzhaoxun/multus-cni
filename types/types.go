@@ -16,12 +16,11 @@
 package types
 
 import (
+	"fmt"
 	"net"
 
 	"github.com/containernetworking/cni/pkg/types"
 	"github.com/containernetworking/cni/pkg/types/current"
-
-	"github.com/qyzhaoxun/multus-cni/logging"
 )
 
 // NetConf for cni config file written in json
@@ -48,14 +47,12 @@ type NetConf struct {
 
 // AddDelegates appends the new delegates to the delegates list
 func (n *NetConf) AddDelegates(newDelegates []*DelegateNetConf) error {
-	logging.Debugf("AddDelegates: %v", newDelegates)
 	n.Delegates = append(n.Delegates, newDelegates...)
 	return nil
 }
 
 // SetDelegates set the new delegates to the delegates list
 func (n *NetConf) SetDelegates(newDelegates []*DelegateNetConf) error {
-	logging.Debugf("SetDelegates: %v", newDelegates)
 	n.Delegates = newDelegates
 	return nil
 }
@@ -91,6 +88,13 @@ type DelegateNetConf struct {
 
 	// Raw JSON
 	Bytes []byte
+}
+
+func (d *DelegateNetConf) String() string {
+	if d.ConfListPlugin {
+		return fmt.Sprintf("{conf: %#v, ifnameRequest: %s, master: %t}", d.ConfList, d.IfnameRequest, d.MasterPlugin)
+	}
+	return fmt.Sprintf("{conf: %#v, ifnameRequest: %s, master: %t}", d.Conf, d.IfnameRequest, d.MasterPlugin)
 }
 
 // NetworkSelectionElement represents one element of the JSON format
