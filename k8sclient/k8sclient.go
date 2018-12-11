@@ -36,6 +36,12 @@ import (
 	"github.com/qyzhaoxun/multus-cni/utils"
 )
 
+const (
+	GroupName                   = "tke.cloud.tencent.com"
+	CNINetworksAnnotation       = "tke.cloud.tencent.com/networks"
+	CNINetworksStatusAnnotation = "tke.cloud.tencent.com/networks-status"
+)
+
 // NoK8sNetworkError indicates error, no network in kubernetes
 type NoK8sNetworkError struct {
 	message string
@@ -107,7 +113,7 @@ func setPodNetworkAnnotation(client KubeClient, namespace string, pod *v1.Pod, n
 		pod.Annotations = make(map[string]string)
 	}
 
-	pod.Annotations["k8s.v1.cni.cncf.io/networks-status"] = networkstatus
+	pod.Annotations[CNINetworksStatusAnnotation] = networkstatus
 
 	pod = pod.DeepCopy()
 	var err error
@@ -137,7 +143,7 @@ func getPodNetworkAnnotation(client KubeClient, k8sArgs *types.K8sArgs) (string,
 		return "", "", logging.Errorf("getPodNetworkAnnotation: failed to query the pod %v in out of cluster comm: %v", string(k8sArgs.K8S_POD_NAME), err)
 	}
 
-	return pod.Annotations["k8s.v1.cni.cncf.io/networks"], pod.ObjectMeta.Namespace, nil
+	return pod.Annotations[CNINetworksAnnotation], pod.ObjectMeta.Namespace, nil
 }
 
 func getKubernetesDelegate(client KubeClient, net *types.NetworkSelectionElement, confdir string) (*types.DelegateNetConf, error) {

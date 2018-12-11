@@ -54,7 +54,7 @@ kind: Pod
 metadata:
   name: samplepod
   annotations:
-    k8s.v1.cni.cncf.io/networks: tke-bridge
+    tke.cloud.tencent.com/networks: tke-bridge
 spec:
   containers:
   - name: samplepod
@@ -132,7 +132,7 @@ kind: Pod
 metadata:
   name: multus-multi-net-poc
   annotations:
-    k8s.v1.cni.cncf.io/networks: '[
+    tke.cloud.tencent.com/networks: '[
             { "name": "flannel-conf" },
             { "name": "sriov-conf" },
             { "name": "sriov-vlanid-l2enable-conf",

@@ -17,11 +17,10 @@ package testing
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net"
 	"strings"
 
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	. "github.com/onsi/gomega"
@@ -48,38 +47,6 @@ func (f *FakeKubeClient) GetRawWithPath(path string) ([]byte, error) {
 	}
 	f.NetCount++
 	return []byte(obj), nil
-}
-
-func (f *FakeKubeClient) AddNetConfig(namespace, name, data string) {
-	cr := fmt.Sprintf(`{
-  "apiVersion": "k8s.cni.cncf.io/v1",
-  "kind": "Network",
-  "metadata": {
-    "namespace": "%s",
-    "name": "%s"
-  },
-  "spec": {
-    "config": "%s"
-  }
-}`, namespace, name, strings.Replace(data, "\"", "\\\"", -1))
-	cr = strings.Replace(cr, "\n", "", -1)
-	cr = strings.Replace(cr, "\t", "", -1)
-	f.nets[fmt.Sprintf("/apis/k8s.cni.cncf.io/v1/namespaces/%s/network-attachment-definitions/%s", namespace, name)] = cr
-}
-
-func (f *FakeKubeClient) AddNetFile(namespace, name, filePath, fileData string) {
-	cr := fmt.Sprintf(`{
-  "apiVersion": "k8s.cni.cncf.io/v1",
-  "kind": "Network",
-  "metadata": {
-    "namespace": "%s",
-    "name": "%s"
-  }
-}`, namespace, name)
-	f.nets[fmt.Sprintf("/apis/k8s.cni.cncf.io/v1/namespaces/%s/network-attachment-definitions/%s", namespace, name)] = cr
-
-	err := ioutil.WriteFile(filePath, []byte(fileData), 0600)
-	Expect(err).NotTo(HaveOccurred())
 }
 
 func (f *FakeKubeClient) GetPod(namespace, name string) (*v1.Pod, error) {
@@ -119,7 +86,7 @@ func NewFakePod(name string, netAnnotation string) *v1.Pod {
 		netAnnotation = strings.Replace(netAnnotation, "\n", "", -1)
 		netAnnotation = strings.Replace(netAnnotation, "\t", "", -1)
 		pod.ObjectMeta.Annotations = map[string]string{
-			"k8s.v1.cni.cncf.io/networks": netAnnotation,
+			"tke.cloud.tencent.com/networks": netAnnotation,
 		}
 	}
 	return pod
