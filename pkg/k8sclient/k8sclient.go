@@ -30,10 +30,10 @@ import (
 	"github.com/containernetworking/cni/pkg/skel"
 	cnitypes "github.com/containernetworking/cni/pkg/types"
 
-	"github.com/qyzhaoxun/multus-cni/conf"
-	"github.com/qyzhaoxun/multus-cni/logging"
-	"github.com/qyzhaoxun/multus-cni/types"
-	"github.com/qyzhaoxun/multus-cni/utils"
+	"github.com/qyzhaoxun/multus-cni/pkg/conf"
+	"github.com/qyzhaoxun/multus-cni/pkg/logging"
+	"github.com/qyzhaoxun/multus-cni/pkg/types"
+	"github.com/qyzhaoxun/multus-cni/pkg/utils"
 )
 
 const (

@@ -16,7 +16,7 @@
 // It reads other plugin netconf, and then invoke them, e.g.
 // flannel or sriov plugin.
 
-package main
+package multus_cni
 
 import (
 	"encoding/json"
@@ -30,13 +30,13 @@ import (
 	cnitypes "github.com/containernetworking/cni/pkg/types"
 	"github.com/containernetworking/cni/pkg/version"
 	"github.com/containernetworking/plugins/pkg/ns"
-
-	"github.com/qyzhaoxun/multus-cni/backend"
-	"github.com/qyzhaoxun/multus-cni/conf"
-	k8s "github.com/qyzhaoxun/multus-cni/k8sclient"
-	"github.com/qyzhaoxun/multus-cni/logging"
-	"github.com/qyzhaoxun/multus-cni/types"
 	"github.com/vishvananda/netlink"
+
+	"github.com/qyzhaoxun/multus-cni/pkg/backend"
+	"github.com/qyzhaoxun/multus-cni/pkg/conf"
+	k8s "github.com/qyzhaoxun/multus-cni/pkg/k8sclient"
+	"github.com/qyzhaoxun/multus-cni/pkg/logging"
+	"github.com/qyzhaoxun/multus-cni/pkg/types"
 )
 
 const (

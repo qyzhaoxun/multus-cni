@@ -1,51 +1,29 @@
-![multus-cni Logo](https://github.com/qyzhaoxun/multus-cni/blob/master/doc/images/Multus.png)
+# MULTUS CNI 插件
+- Multus 是 meta cni，该 cni 使 k8s 集群支持多种 cni 插件，并且一个 pod 中可以设置多个网络接口。
+- Multus 调用其他 cni（bridge,tke-eni-cni）来完成容器的网络配置。
+- Multus 复用了 flannel 中 CNI 委托的处理方式，根据 pod annotation 中指定的 cni 序列，依次读取对应的 cni 配置文件，执行相应的 cni 命令。
+- Multus 委托调用的 cni 如果没有指定请求的网卡名称，则 Multus 会为该 cni 生成网卡名称，例如 "eth1"，"eth2"，"ethX" 等等，kubelet 中的默认网卡对应的 cni 为主 cni。
 
-[![Travis CI](https://travis-ci.org/intel/multus-cni.svg?branch=master)](https://travis-ci.org/intel/multus-cni/builds)[![Go Report Card](https://goreportcard.com/badge/github.com/qyzhaoxun/multus-cni)](https://goreportcard.com/report/github.com/qyzhaoxun/multus-cni)
+可以查看详细了解 [CNI](https://github.com/containernetworking/cni)
 
-   * [MULTUS CNI plugin](#multus-cni-plugin)
-      * [Quickstart Guide](#quickstart-guide)
-      * [Multi-Homed pod](#multi-homed-pod)
-      * [Building from source](#building-from-source)
-      * [Work flow](#work-flow)
-      * [Using with Multus conf file](#using-with-multus-conf-file)
-      * [Logging Options](#logging-options)
-      * [Testing Multus CNI](#testing-multus-cni)
-         * [Multiple flannel networks](#multiple-flannel-networks)
-            * [Configure Kubernetes with CNI](#configure-kubernetes-with-cni)
-            * [Launching workloads in Kubernetes](#launching-workloads-in-kubernetes)
-      * [Multus additional plugins](#multus-additional-plugins)
-      * [NFV based networking in Kubernetes](#nfv-based-networking-in-kubernetes)
-      * [Need help](#need-help)
-      * [Contacts](#contacts)
+# 指引
 
-# MULTUS CNI plugin
-- _Multus_ is a latin word for &quot;Multi&quot;
-- As the name suggests, it acts as a Multi plugin in Kubernetes and provides the multiple network interface support in a pod
-- Multus supports all [reference plugins](https://github.com/containernetworking/plugins) (eg. [Flannel](https://github.com/containernetworking/plugins/tree/master/plugins/meta/flannel), [DHCP](https://github.com/containernetworking/plugins/tree/master/plugins/ipam/dhcp), [Macvlan](https://github.com/containernetworking/plugins/tree/master/plugins/main/macvlan)) that implement the CNI specification and all 3rd party plugins (eg. [Calico](https://github.com/projectcalico/cni-plugin), [Weave](https://github.com/weaveworks/weave), [Cilium](https://github.com/cilium/cilium), [Contiv](https://github.com/contiv/netplugin)). In addition to it, Multus supports [SRIOV](https://github.com/hustcat/sriov-cni), [SRIOV-DPDK](https://github.com/Intel-Corp/sriov-cni), [OVS-DPDK &amp; VPP](https://github.com/intel/vhost-user-net-plugin) workloads in Kubernetes with both cloud native and NFV based applications in Kubernetes
-- It is a contact between the container runtime and other plugins, and it doesn&#39;t have any of its own net configuration, it calls other plugins like flannel/calico to do the real net conf job.
-- Multus reuses the concept of invoking delegates as used in flannel by grouping multiple plugins into delegates and invoking them in the sequential order of the CNI configuration file provided in json format
-- The default network gets "eth0" and additional network Pod interface name as “net0”, “net1”,… “netX and so on. Multus also support interface names from the user.
-- Multus is one of the projects in the [Baremetal Container Experience kit](https://networkbuilders.intel.com/network-technologies/container-experience-kits).
+Multus 可以以 Daemonset 的方式部署在 k8s 集群, 本例使用 tke-bridge 做示例。
 
-Please check the [CNI](https://github.com/containernetworking/cni) documentation for more information on container networking.
-
-# Quickstart Guide
-
-Multus may be deployed as a Daemonset, and is provided in this guide along with tke-bridge. tke-bridge is deployed as a pod-to-pod network that is used as our "default network". Each network attachment is made in addition to this default network.
-
-Firstly, deploy tke-bridge Daemonset
+首先部署委托 cni tke-bridge 的 Daemonset。
 
 ```
-$ kubectl create -f https://raw.githubusercontent.com/qyzhaoxun/tke-bridge-agent/master/deploy/v0.1/tke-bridge-agent.yaml
+$ kubectl create -f https://raw.githubusercontent.com/qyzhaoxun/tke-bridge-agent/master/deploy/v0.0.3/tke-bridge-agent.yaml
 ```
 
-Secondly, deploy multus-cni Daemonset
+接着部署 multus-cni 的 Daemonset。
 
 ```
-$ kubectl create -f https://raw.githubusercontent.com/qyzhaoxun/multus-cni/master/deploy/v0.1/multus.yaml
+$ kubectl create -f https://raw.githubusercontent.com/qyzhaoxun/multus-cni/master/deploy/v0.0.1/multus.yaml
 ```
 
-You may then create a pod which attached this additional interface, where the annotation correlates to the `name` in the `NetworkAttachmentDefinition` above.
+
+然后部署一个 pod，该 pod 的 annotation 中指定使用该 tke-bridge。
 
 ```
 cat <<EOF | kubectl create -f -
@@ -63,41 +41,36 @@ spec:
 EOF
 ```
 
-You may now inspect the pod and see that there is an additional interface configured, like so:
+通过如下命令查看该 pod 的网络接口配置：
 
 ```
 $ kubectl exec -it samplepod -- ip a
 ```
 
-## Multi-Homed pod
-<p align="center">
-   <img src="doc/images/multus_cni_pod.png" width="1008" />
-</p>
 
-## Building from source
+## 构建
 
-**This plugin requires Go 1.8 (or later) to build.**
+通过 docker 构建
 
 ```
-$ make build
+$ make docker-build
 ```
 
-## Work flow
+## 工作流
 <p align="center">
    <img src="doc/images/workflow.png" width="1008" />
 </p>
 
-## Network configuration reference
+## Multus 配置参数
 
-- name (string, required): the name of the network
+- name (string, required): cni 名称
 - type (string, required): &quot;multus&quot;
-- kubeconfig (string, optional): kubeconfig file for the out of cluster communication with kube-apiserver. See the example [kubeconfig](https://github.com/qyzhaoxun/multus-cni/blob/master/doc/node-kubeconfig.yaml)
-- defaultDelegates (string,optional): default delegates in the Multus. If pod without network annotations, multus will use delegates to load cni configurations and config pod ips. See the example [defaultDelegates](https://github.com/qyzhaoxun/multus-cni/blob/master/doc/default-delegates.md)
-- capabilities ({}list, optional): [capabilities](https://github.com/containernetworking/cni/blob/master/CONVENTIONS.md#dynamic-plugin-specific-fields-capabilities--runtime-configuration) supported by at least one of the delegates. (NOTE: Multus only supports portMappings capability for now). See the [example](https://github.com/qyzhaoxun/multus-cni/blob/master/examples/multus-ptp-portmap.conf).
+- kubeconfig (string, optional): Multus 使用该配置和 kube-apiserver 通信。查看示例 [kubeconfig](https://github.com/qyzhaoxun/multus-cni/blob/master/doc/node-kubeconfig.yaml)
+- defaultDelegates (string,optional): 默认的委托 cni 配置。如果 pod 没有指定 annotation，Multus 会使用该 cni 配置。查看示例 [defaultDelegates](https://github.com/qyzhaoxun/multus-cni/blob/master/doc/default-delegates.md)
 
-### Configuring Multus to use the kubeconfig
+### 配置 kubeconfig
 
-1. Create a Mutlus CNI configuration file on each Kubernetes node. This file should be created in: /etc/cni/net.d/multus-cni.conf with the content shown below. Use only the absolute path to point to the kubeconfig file (as it may change depending upon your cluster env). We are assuming all CNI plugin binaries are default location (`/opt/cni/bin dir`)
+1. 在 Kubernetes node 创建如下 cni 配置文件：/etc/cni/net.d/multus-cni.conf。kubeconfig 文件应该使用绝对路径。CNI 二进制的默认路径我们认为是 (`/opt/cni/bin dir`) CNI 配置文件的默认路径我们认为是 (`/etc/cni/net.d dir`)
 
 ```
 {
@@ -107,9 +80,9 @@ $ make build
 }
 ```
 
-### Configuring Multus to use kubeconfig and a default network
+### 配置 kubeconfig 和默认委托 cni
 
-1. Many users want Kubernetes default networking feature along with network objects. In the following Multus configuration, tke-bridge act as the default network in the absence of network field in the pod metadata annotation.
+1. 下面的配置中, 如果 pod 没有指定 annotation，tke-bridge 将充当默认 cni
 
 ```
 {
@@ -120,11 +93,9 @@ $ make build
 }
 ```
 
-Configurations referenced in annotations are created in addition to the default network.
+### 配置 Pod 使用多个 cni
 
-### Configuring Pod to use multi cni
-
-1. Save the following YAML to pod-multi-network.yaml. In this case flannel-conf network object acts as the primary network.
+1. 将下面配置保存为文件 pod-multi-network.yaml。 下面的配置中 flannel-conf 对应的网卡是 eth0 为主网卡。集群中需要部署 cni：flannel-conf，sriov-conf，sriov-vlanid-l2enable-conf
 ```
 # cat pod-multi-network.yaml
 apiVersion: v1
@@ -147,14 +118,14 @@ spec:  # specification of the pod's contents
     tty: true
 ```
 
-2. Create Multiple network based pod from the master node
+2. 创建 pod
 
 ```
 # kubectl create -f ./pod-multi-network.yaml
 pod "multus-multi-net-poc" created
 ```
 
-3. Get the details of the running pod from the master
+3. 查看 pod
 
 ```
 # kubectl get pods
@@ -162,20 +133,12 @@ NAME                   READY     STATUS    RESTARTS   AGE
 multus-multi-net-poc   1/1       Running   0          30s
 ```
 
-### Verifying Pod network interfaces
+### 查看 pod 网卡信息
 
 1. Run `ifconfig` command in Pod:
 
 ```
 # kubectl exec -it multus-multi-net-poc -- ifconfig
-eth0      Link encap:Ethernet  HWaddr C6:43:7C:09:B4:9C
-          inet addr:10.128.0.4  Bcast:0.0.0.0  Mask:255.255.255.0
-          UP BROADCAST RUNNING MULTICAST  MTU:1450  Metric:1
-          RX packets:8 errors:0 dropped:0 overruns:0 frame:0
-          TX packets:1 errors:0 dropped:0 overruns:0 carrier:0
-          collisions:0 txqueuelen:0
-          RX bytes:648 (648.0 B)  TX bytes:42 (42.0 B)
-
 lo        Link encap:Local Loopback
           inet addr:127.0.0.1  Mask:255.0.0.0
           inet6 addr: ::1/128 Scope:Host
@@ -185,7 +148,7 @@ lo        Link encap:Local Loopback
           collisions:0 txqueuelen:1
           RX bytes:0 (0.0 B)  TX bytes:0 (0.0 B)
 
-eth1      Link encap:Ethernet  HWaddr 06:21:91:2D:74:B9
+eth0      Link encap:Ethernet  HWaddr 06:21:91:2D:74:B9
           inet addr:192.168.42.3  Bcast:0.0.0.0  Mask:255.255.255.0
           inet6 addr: fe80::421:91ff:fe2d:74b9/64 Scope:Link
           UP BROADCAST RUNNING MULTICAST  MTU:1450  Metric:1
@@ -194,7 +157,7 @@ eth1      Link encap:Ethernet  HWaddr 06:21:91:2D:74:B9
           collisions:0 txqueuelen:0
           RX bytes:0 (0.0 B)  TX bytes:648 (648.0 B)
 
-eth2      Link encap:Ethernet  HWaddr D2:94:98:82:00:00
+eth1      Link encap:Ethernet  HWaddr D2:94:98:82:00:00
           inet addr:10.56.217.171  Bcast:0.0.0.0  Mask:255.255.255.0
           inet6 addr: fe80::d094:98ff:fe82:0/64 Scope:Link
           UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
@@ -215,12 +178,11 @@ north     Link encap:Ethernet  HWaddr BE:F2:48:42:83:12
 | Interface name | Description |
 | --- | --- |
 | lo | loopback |
-| eth0 | weave network interface |
-| eth1 | Flannel network tap interface |
-| eth2 | VF0 of NIC 1 assigned to the container by [Intel - SR-IOV CNI](https://github.com/intel/sriov-cni) plugin |
-| north | VF0 of NIC 2 assigned with VLAN ID 210 to the container by SR-IOV CNI plugin |
+| eth0 | Flannel tap 网卡 |
+| eth1 | SR-IOV CNI 插件设置的网卡 [Intel - SR-IOV CNI](https://github.com/intel/sriov-cni)  |
+| north | SR-IOV CNI 插件设置的网卡 |
 
-2. Check the vlan ID of the NIC 2 VFs
+2. 检查 north 网卡的 vlan ID
 
 ```
 # ip link show enp2s0
@@ -232,63 +194,46 @@ north     Link encap:Ethernet  HWaddr BE:F2:48:42:83:12
     vf 3 MAC 00:00:00:00:00:00, vlan 4095, spoof checking off, link-state auto
 ```
 
-## Using with Multus conf file
+## 日志选项
 
-Given the following network configuration:
+Multus 会将日志输出到 `STDERR`, 该方法是 CNI 插件输出错误的标准方法，这些错误会输出到 kubelet 的日志中。
 
-```
-# tee /etc/cni/net.d/00-multus-cni.conf <<-'EOF'
-{
-    "name": "multus-demo-network",
-    "type": "multus",
-    "defaultDelegates": "tke-bridge"
-}
-EOF
-```
+### 将日志输出到文件
 
-## Logging Options
-
-You may wish to enable some enhanced logging for Multus, especially during the process where you're configuring Multus and need to understand what is or isn't working with your particular configuration.
-
-Multus will always log via `STDERR`, which is the standard method by which CNI plugins communicate errors, and these errors are logged by the Kubelet. This method is always enabled.
-
-### Writing to a Log File
-
-Optionally, you may have Multus log to a file on the filesystem. This file will be written locally on each node where Multus is executed. You may configure this via the `LogFile` option in the CNI configuration. By default this additional logging to a flat file is disabled.
-
-For example in your CNI configuration, you may set:
+设置 Multus 的日志文件：
 
 ```
     "LogFile": "/var/log/multus.log",
 ```
 
-### Logging Level
+### 设置日志登记
 
-The default logging level is set as `panic` -- this will log only the most critical errors, and is the least verbose logging level.
+默认的日志等级是 `info`
 
-The available logging level values, in decreasing order of verbosity are:
+有下列日志等级：
 
 * `debug`
+* `info`
 * `error`
 * `panic`
 
-You may configure the logging level by using the `LogLevel` option in your CNI configuration. For example:
+设置 Multus 的日志等级：
 
 ```
     "LogLevel": "debug",
 ```
 
-## Testing Multus CNI
+## 测试 Multus CNI
 
-### Multiple flannel networks
+### 多 flannel 网络
 
-Github user [YYGCui](https://github.com/YYGCui) has used multiple flannel network to work with Multus CNI plugin. Please refer to this [closed issue](https://github.com/qyzhaoxun/multus-cni/issues/7) for ,multiple overlay network support with Multus CNI.
+Github 用户 [YYGCui](https://github.com/YYGCui) 使用了 Multus 跑多 flannel 网络。具体可查看 [closed issue](https://github.com/intel/multus-cni/issues/7) 。
 
-Make sure that the multus, [sriov](https://github.com/Intel-Corp/sriov-cni), [flannel](https://github.com/containernetworking/cni/blob/master/Documentation/flannel.md), and [ptp](https://github.com/containernetworking/cni/blob/master/Documentation/ptp.md) binaries are in the /opt/cni/bin directories and follow the steps as mentioned in the [CNI](https://github.com/containernetworking/cni/#running-a-docker-container-with-network-namespace-set-up-by-cni-plugins)
+确保 multus, [sriov](https://github.com/Intel-Corp/sriov-cni), [flannel](https://github.com/containernetworking/cni/blob/master/Documentation/flannel.md), and [ptp](https://github.com/containernetworking/cni/blob/master/Documentation/ptp.md) 二进制在 /opt/cni/bin 文件夹，配置在 /etc/cni/net.d 文件夹。
 
-#### Configure Kubernetes with CNI
+#### 配置 Kubernetes 使用 CNI
 
-Kubelet must be configured to run with the CNI network plugin. Edit `/etc/kubernetes/kubelet` file and add `--network-plugin=cni` flags in `KUBELET\_OPTS `as shown below:
+Kubelet 需要配置使用 CNI 网络插件。编辑 `/etc/kubernetes/kubelet` 文件，添加如下 `--network-plugin=cni`，`KUBELET\_OPTS `参数:
 
 ```
 KUBELET_OPTS="...
@@ -297,16 +242,12 @@ KUBELET_OPTS="...
 "
 ```
 
-Refer to the Kubernetes User Guide and network plugin for more information.
+详细设置可以参考以下链接：
 - [Single Node](https://kubernetes.io/docs/getting-started-guides/fedora/fedora_manual_config/)
 - [Multi Node](https://kubernetes.io/docs/getting-started-guides/fedora/flannel_multi_node_cluster/)
 - [Network plugin](https://kubernetes.io/docs/admin/network-plugins/)
 
-#### Launching workloads in Kubernetes
-
-With Multus CNI configured as described in sections above each workload launched via a Kubernetes Pod will have multiple network interfacesLaunch the workload using yaml file in the kubernetes master, with above configuration in the multus CNI, each pod should have multiple interfaces.
-
-Note: To verify whether Multus CNI plugin is working correctly, create a pod containing one `busybox` container and execute `ip link` command to check if interfaces management follows configuration.
+#### 创建 Kubernetes workload
 
 1. Create `multus-test.yaml` file containing below configuration. Created pod will consist of one `busybox` container running `top` command.
 
@@ -326,14 +267,14 @@ spec:  # specification of the pod's contents
 
 ```
 
-2. Create pod using command:
+2. 创建 pod:
 
 ```
 # kubectl create -f multus-test.yaml
 pod "multus-test" created
 ```
 
-3. Run &quot;ip link&quot; command inside the container:
+3. 在容器中运行 &quot;ip link&quot; 命令:
 
 ```
 # 1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue qlen 1
@@ -349,46 +290,7 @@ pod "multus-test" created
 | Interface name | Description |
 | --- | --- |
 | lo | loopback |
-| eth0@if41 | Flannel network tap interface |
-| eth1 | VF assigned to the container by [SR-IOV CNI](https://github.com/Intel-Corp/sriov-cni) plugin |
-| eth2 | ptp localhost interface |
-
-## Multus additional plugins
-
-- [DPDK-SRIOV CNI](https://github.com/Intel-Corp/sriov-cni)
-- [Vhostuser CNI](https://github.com/intel/vhost-user-net-plugin) - a Dataplane network plugin - Supports OVS-DPDK &amp; VPP
-- [Bond CNI](https://github.com/Intel-Corp/bond-cni) - For fail-over and high availability of networking
-
-## NFV based networking in Kubernetes
-
-- KubeCon workshop on [&quot;Enabling NFV features in Kubernetes&quot;](https://kccncna17.sched.com/event/Cvnw/enabling-nfv-features-in-kubernetes-hosted-by-kuralamudhan-ramakrishnan-ivan-coughlan-intel) presentation [slide deck](https://www.slideshare.net/KuralamudhanRamakris/enabling-nfv-features-in-kubernetes-83923352)
-- Feature brief
-  - [Multiple Network Interface Support in Kubernetes](https://builders.intel.com/docs/networkbuilders/multiple-network-interfaces-support-in-kubernetes-feature-brief.pdf)
-  - [Enhanced Platform Awareness in Kubernetes](https://builders.intel.com/docs/networkbuilders/enhanced-platform-awareness-feature-brief.pdf)
-- Application note
-  - [Multiple Network Interfaces in Kubernetes and Container Bare Metal](https://builders.intel.com/docs/networkbuilders/multiple-network-interfaces-in-kubernetes-application-note.pdf)
-  - [Enhanced Platform Awareness Features in Kubernetes](https://builders.intel.com/docs/networkbuilders/enhanced-platform-awareness-in-kubernetes-application-note.pdf)
-- White paper
-  - [Enabling New Features with Kubernetes for NFV](https://builders.intel.com/docs/networkbuilders/enabling_new_features_in_kubernetes_for_NFV.pdf)
-- Multus&#39;s related project github pages
-  - [Multus](https://github.com/Intel-Corp/multus-cni)
-  - [SRIOV - DPDK CNI](https://github.com/Intel-Corp/sriov-cni)
-  - [Vhostuser - VPP &amp; OVS - DPDK CNI](https://github.com/intel/vhost-user-net-plugin)
-  - [Bond CNI](https://github.com/Intel-Corp/bond-cni)
-  - [Node Feature Discovery](https://github.com/kubernetes-incubator/node-feature-discovery)
-  - [CPU Manager for Kubernetes](https://github.com/Intel-Corp/CPU-Manager-for-Kubernetes)
-
-
-## Need help
-
-- Read [Containers Experience Kits](https://networkbuilders.intel.com/network-technologies/container-experience-kits)
-- Try our container exp kit demo - KubeCon workshop on [Enabling NFV Features in Kubernetes](https://github.com/intel/container-experience-kits-demo-area/)
-- Join us on [#intel-sddsg-slack](https://intel-corp.herokuapp.com/) slack channel and ask question in [#general-discussion](https://intel-corp-team.slack.com/messages/C4C5RSEER)
-- You can also [email](mailto:kuralamudhan.ramakrishnan@intel.com) us
-- Feel free to [submit](https://github.com/Intel-Corp/multus-cni/issues/new) an issue
-
-Please fill in the Questions/feedback - [google-form](https://goo.gl/forms/upBWyGs8Wmq69IEi2)!
-
-## Contacts
-For any questions about Multus CNI, please reach out on github issue or feel free to contact the developer @kural in our [Intel-Corp Slack](https://intel-corp.herokuapp.com/)
+| eth0@if41 | Flannel tap 网卡 |
+| eth1 | SR-IOV 设置为容器的 VF |
+| eth2 | ptp 本地网卡 |
 

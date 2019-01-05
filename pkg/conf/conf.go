@@ -29,9 +29,9 @@ import (
 	"github.com/containernetworking/cni/pkg/version"
 
 	"github.com/containernetworking/cni/pkg/invoke"
-	"github.com/qyzhaoxun/multus-cni/logging"
-	mtypes "github.com/qyzhaoxun/multus-cni/types"
-	"github.com/qyzhaoxun/multus-cni/utils"
+	"github.com/qyzhaoxun/multus-cni/pkg/logging"
+	mtypes "github.com/qyzhaoxun/multus-cni/pkg/types"
+	"github.com/qyzhaoxun/multus-cni/pkg/utils"
 )
 
 const (

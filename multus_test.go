@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-package main
+package multus_cni
 
 import (
 	"encoding/json"
@@ -32,7 +32,7 @@ import (
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/containernetworking/plugins/pkg/testutils"
 
-	testhelpers "github.com/qyzhaoxun/multus-cni/testing"
+	testhelpers "github.com/qyzhaoxun/multus-cni/pkg/testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
