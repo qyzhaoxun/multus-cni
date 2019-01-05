@@ -17,14 +17,18 @@ package conf
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/containernetworking/cni/libcni"
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
+	cnitypes "github.com/containernetworking/cni/pkg/types"
 	"github.com/containernetworking/cni/pkg/types/current"
 	"github.com/containernetworking/cni/pkg/version"
 
+	"github.com/containernetworking/cni/pkg/invoke"
 	"github.com/qyzhaoxun/multus-cni/logging"
 	mtypes "github.com/qyzhaoxun/multus-cni/types"
 	"github.com/qyzhaoxun/multus-cni/utils"
@@ -278,4 +282,43 @@ func GetDelegateFromFile(net *mtypes.NetworkSelectionElement, confdir string) (*
 	}
 
 	return delegate, nil
+}
+
+func ConflistAdd(rt *libcni.RuntimeConf, rawnetconflist []byte, binDir string, exec invoke.Exec) (cnitypes.Result, error) {
+	logging.Debugf("conflistAdd: %v, %s, %s", rt, string(rawnetconflist), binDir)
+	// In part, adapted from K8s pkg/kubelet/dockershim/network/cni/cni.go
+	binDirs := filepath.SplitList(os.Getenv("CNI_PATH"))
+	binDirs = append(binDirs, binDir)
+	cniNet := libcni.NewCNIConfig(binDirs, exec)
+
+	confList, err := libcni.ConfListFromBytes(rawnetconflist)
+	if err != nil {
+		return nil, logging.Errorf("error in converting the raw bytes to conflist: %v", err)
+	}
+
+	result, err := cniNet.AddNetworkList(confList, rt)
+	if err != nil {
+		return nil, logging.Errorf("error in getting result from AddNetworkList: %v", err)
+	}
+
+	return result, nil
+}
+
+func ConflistDel(rt *libcni.RuntimeConf, rawnetconflist []byte, binDir string) error {
+	logging.Debugf("conflistDel: %v, %s, %s", rt, string(rawnetconflist), binDir)
+	// In part, adapted from K8s pkg/kubelet/dockershim/network/cni/cni.go
+	binDirs := []string{binDir}
+	cniNet := libcni.CNIConfig{Path: binDirs}
+
+	confList, err := libcni.ConfListFromBytes(rawnetconflist)
+	if err != nil {
+		return logging.Errorf("error in converting the raw bytes to conflist: %v", err)
+	}
+
+	err = cniNet.DelNetworkList(confList, rt)
+	if err != nil {
+		return logging.Errorf("error in getting result from DelNetworkList: %v", err)
+	}
+
+	return err
 }
