@@ -16,7 +16,7 @@
 // It reads other plugin netconf, and then invoke them, e.g.
 // flannel or sriov plugin.
 
-package multus_cni
+package main
 
 import (
 	"encoding/json"
