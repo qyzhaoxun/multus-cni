@@ -145,7 +145,7 @@ func getPodNetworkAnnotation(client KubeClient, k8sArgs *types.K8sArgs) (string,
 }
 
 func getKubernetesDelegate(client KubeClient, net *types.NetworkSelectionElement, confdir string) (*types.DelegateNetConf, error) {
-	logging.Debugf("getKubernetesDelegate: %#v, %s", net, confdir)
+	logging.Debugf("getKubernetesDelegate: %+v, %s", net, confdir)
 	delegate, err := conf.GetDelegateFromFile(net, confdir)
 	if err != nil {
 		return nil, err
@@ -197,7 +197,7 @@ func TryLoadK8sDelegates(k8sArgs *types.K8sArgs, conf *types.NetConf, kubeClient
 		if _, ok := err.(*NoK8sNetworkError); ok {
 			return 0, clientInfo, nil
 		}
-		return 0, nil, logging.Errorf("Multus: Err in getting k8s network from pod: %v", err)
+		return 0, nil, logging.Errorf("TryLoadK8sDelegates: Err in getting k8s network from pod: %v", err)
 	}
 
 	if err = conf.SetDelegates(delegates); err != nil {

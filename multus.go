@@ -80,17 +80,17 @@ func validateIfName(nsname string, ifname string) error {
 func delegateAdd(exec invoke.Exec, ifName string, delegate *types.DelegateNetConf, rt *libcni.RuntimeConf, binDir string) (cnitypes.Result, error) {
 	logging.Debugf("delegateAdd: %v, %s, %s, %v, %s", exec, ifName, delegate, rt, binDir)
 	if os.Setenv("CNI_IFNAME", ifName) != nil {
-		return nil, logging.Errorf("Multus: error in setting CNI_IFNAME")
+		return nil, logging.Errorf("delegateAdd: error in setting CNI_IFNAME")
 	}
 
 	if err := validateIfName(os.Getenv("CNI_NETNS"), ifName); err != nil {
-		return nil, logging.Errorf("cannot set %q ifname to %q: %v", delegate.Conf.Type, ifName, err)
+		return nil, logging.Errorf("delegateAdd: cannot set %q ifname to %q: %v", delegate.Conf.Type, ifName, err)
 	}
 
 	if delegate.ConfListPlugin != false {
 		result, err := conf.ConflistAdd(rt, delegate.Bytes, binDir, exec)
 		if err != nil {
-			return nil, logging.Errorf("Multus: error in invoke Conflist add - %q: %v", delegate.ConfList.Name, err)
+			return nil, logging.Errorf("delegateAdd: error in invoke Conflist add - %q: %v", delegate.ConfList.Name, err)
 		}
 
 		return result, nil
@@ -98,7 +98,7 @@ func delegateAdd(exec invoke.Exec, ifName string, delegate *types.DelegateNetCon
 
 	result, err := invoke.DelegateAdd(delegate.Conf.Type, delegate.Bytes, exec)
 	if err != nil {
-		return nil, logging.Errorf("Multus: error in invoke Delegate add - %q: %v", delegate.Conf.Type, err)
+		return nil, logging.Errorf("delegateAdd: error in invoke Delegate add - %q: %v", delegate.Conf.Type, err)
 	}
 
 	return result, nil
@@ -107,20 +107,20 @@ func delegateAdd(exec invoke.Exec, ifName string, delegate *types.DelegateNetCon
 func delegateDel(exec invoke.Exec, ifName string, delegateConf *types.DelegateNetConf, rt *libcni.RuntimeConf, binDir string) error {
 	logging.Debugf("delegateDel: %v, %s, %s, %v, %s", exec, ifName, delegateConf, rt, binDir)
 	if os.Setenv("CNI_IFNAME", ifName) != nil {
-		return logging.Errorf("Multus: error in setting CNI_IFNAME")
+		return logging.Errorf("delegateDel: error in setting CNI_IFNAME")
 	}
 
 	if delegateConf.ConfListPlugin != false {
 		err := conf.ConflistDel(rt, delegateConf.Bytes, binDir)
 		if err != nil {
-			return logging.Errorf("Multus: error in invoke Conflist Del - %q: %v", delegateConf.ConfList.Name, err)
+			return logging.Errorf("delegateDel: error in invoke Conflist Del - %q: %v", delegateConf.ConfList.Name, err)
 		}
 
 		return err
 	}
 
 	if err := invoke.DelegateDel(delegateConf.Conf.Type, delegateConf.Bytes, exec); err != nil {
-		return logging.Errorf("Multus: error in invoke Delegate del - %q: %v", delegateConf.Conf.Type, err)
+		return logging.Errorf("delegateDel: error in invoke Delegate del - %q: %v", delegateConf.Conf.Type, err)
 	}
 
 	return nil
@@ -129,7 +129,7 @@ func delegateDel(exec invoke.Exec, ifName string, delegateConf *types.DelegateNe
 func delPlugins(exec invoke.Exec, delegates []*types.DelegateNetConf, lastIdx int, rt *libcni.RuntimeConf, binDir string) (int, error) {
 	logging.Debugf("delPlugins: %v, %d", exec, lastIdx)
 	if os.Setenv("CNI_COMMAND", "DEL") != nil {
-		return lastIdx, logging.Errorf("Multus: error in setting CNI_COMMAND to DEL")
+		return lastIdx, logging.Errorf("delPlugins: error in setting CNI_COMMAND to DEL")
 	}
 
 	var err error
@@ -137,8 +137,8 @@ func delPlugins(exec invoke.Exec, delegates []*types.DelegateNetConf, lastIdx in
 	for idx = lastIdx; idx >= 0; idx-- {
 		ifName := delegates[idx].IfnameRequest
 		rt.IfName = ifName
-		if err := delegateDel(exec, ifName, delegates[idx], rt, binDir); err != nil {
-			err = logging.Errorf("delPlugins: error %v in del interface %s with delegate %v", err, ifName, *delegates[idx])
+		if err = delegateDel(exec, ifName, delegates[idx], rt, binDir); err != nil {
+			err = logging.Errorf("delPlugins: error in del plugin %s: %v", delegates[idx], err)
 			break
 		}
 	}
@@ -275,13 +275,13 @@ func cmdAdd(args *skel.CmdArgs, exec invoke.Exec, kubeClient k8s.KubeClient) (cn
 
 	if err != nil {
 		// Ignore errors; DEL must be idempotent anyway
-		rIdx, err1 := delPlugins(exec, n.Delegates, idx, rt, n.BinDir)
+		_, err1 := delPlugins(exec, n.Delegates, idx, rt, n.BinDir)
 		if err1 != nil {
-			// cache the multus config if we have only Multus delegates
-			if err2 := saveDelegates(args.ContainerID, n.Delegates[:rIdx+1], store); err2 != nil {
-				logging.Errorf("cmdAdd: Err in saving failed delegates: %v", err2)
-			}
-			return nil, logging.Errorf("cmdAdd: Err in tearing down failed plugins: %v", err1)
+			// TODO cache the multus config if we have only Multus delegates, kubelet would not retry cmd del
+			//if err2 := saveDelegates(args.ContainerID, n.Delegates[:rIdx+1], store); err2 != nil {
+			//	logging.Errorf("cmdAdd: Err in saving failed delegates: %v", err2)
+			//}
+			logging.Errorf("cmdAdd: Err in tearing down failed plugins: %v", err1)
 		}
 
 		// ignore error

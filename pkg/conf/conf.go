@@ -270,7 +270,7 @@ func getCNIConfigFromFile(name string, confdir string) ([]byte, error) {
 }
 
 func GetDelegateFromFile(net *mtypes.NetworkSelectionElement, confdir string) (*mtypes.DelegateNetConf, error) {
-	logging.Infof("getDelegateFromFile: %#v, %s", net, confdir)
+	logging.Infof("getDelegateFromFile: %+v, %s", net, confdir)
 	configBytes, err := getCNIConfigFromFile(net.Name, confdir)
 	if err != nil {
 		return nil, logging.Errorf("cniConfigFromNetworkResource: err in getCNIConfigFromFile: %v", err)

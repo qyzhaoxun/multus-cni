@@ -92,9 +92,9 @@ type DelegateNetConf struct {
 
 func (d *DelegateNetConf) String() string {
 	if d.ConfListPlugin {
-		return fmt.Sprintf("{conf: %#v, ifnameRequest: %s, master: %t}", d.ConfList, d.IfnameRequest, d.MasterPlugin)
+		return fmt.Sprintf("{conf: %+v, ifnameRequest: %s, master: %t}", d.ConfList, d.IfnameRequest, d.MasterPlugin)
 	}
-	return fmt.Sprintf("{conf: %#v, ifnameRequest: %s, master: %t}", d.Conf, d.IfnameRequest, d.MasterPlugin)
+	return fmt.Sprintf("{conf: %+v, ifnameRequest: %s, master: %t}", d.Conf, d.IfnameRequest, d.MasterPlugin)
 }
 
 // NetworkSelectionElement represents one element of the JSON format
