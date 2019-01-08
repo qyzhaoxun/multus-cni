@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/containernetworking/cni/libcni"
 	"github.com/containernetworking/cni/pkg/invoke"
@@ -126,28 +127,28 @@ func delegateDel(exec invoke.Exec, ifName string, delegateConf *types.DelegateNe
 	return nil
 }
 
-func delPlugins(exec invoke.Exec, delegates []*types.DelegateNetConf, lastIdx int, rt *libcni.RuntimeConf, binDir string) (int, error) {
+func delPlugins(exec invoke.Exec, delegates []*types.DelegateNetConf, lastIdx int, rt *libcni.RuntimeConf, binDir string) ([]*types.DelegateNetConf, error) {
 	logging.Debugf("delPlugins: %v, %d", exec, lastIdx)
 	if os.Setenv("CNI_COMMAND", "DEL") != nil {
-		return lastIdx, logging.Errorf("delPlugins: error in setting CNI_COMMAND to DEL")
+		return delegates, logging.Errorf("delPlugins: error in setting CNI_COMMAND to DEL")
 	}
 
-	var err error
-	var idx int
-	for idx = lastIdx; idx >= 0; idx-- {
+	var errstr []string
+	var eDelegates []*types.DelegateNetConf
+	for idx := lastIdx; idx >= 0; idx-- {
 		ifName := delegates[idx].IfnameRequest
 		rt.IfName = ifName
-		if err = delegateDel(exec, ifName, delegates[idx], rt, binDir); err != nil {
-			err = logging.Errorf("delPlugins: error in del plugin %s: %v", delegates[idx], err)
-			break
+		if err := delegateDel(exec, ifName, delegates[idx], rt, binDir); err != nil {
+			errstr = append(errstr, err.Error())
+			eDelegates = append([]*types.DelegateNetConf{delegates[idx]}, eDelegates...)
 		}
 	}
 
-	if err != nil {
-		return idx, err
+	if len(eDelegates) > 0 {
+		return eDelegates, fmt.Errorf(strings.Join(errstr, ";"))
 	}
 
-	return -1, nil
+	return nil, nil
 }
 
 func setDelegatesIfname(delegates []*types.DelegateNetConf, argsIfname string) error {
@@ -353,12 +354,11 @@ func cmdDel(args *skel.CmdArgs, exec invoke.Exec, kubeClient k8s.KubeClient) err
 
 	rt, _ := conf.LoadCNIRuntimeConf(args, k8sArgs, "", n.RuntimeConfig)
 
-	var rIdx int
 	// Ignore errors; DEL must be idempotent anyway
-	rIdx, err = delPlugins(exec, n.Delegates, len(n.Delegates)-1, rt, n.BinDir)
+	eDelegates, err := delPlugins(exec, n.Delegates, len(n.Delegates)-1, rt, n.BinDir)
 	if err != nil {
 		// cache the multus config, kubelet wil retry cmdDel
-		if err1 := saveDelegates(args.ContainerID, n.Delegates[:rIdx+1], store); err1 != nil {
+		if err1 := saveDelegates(args.ContainerID, eDelegates, store); err1 != nil {
 			// ignore error
 			logging.Errorf("cmdDel: Err in saving failed delegates: %v", err1)
 		}
