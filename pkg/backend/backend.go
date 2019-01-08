@@ -47,7 +47,7 @@ func NewStore(dataDir string) (*Store, error) {
 func (s *Store) Save(id string, data []byte) error {
 	fname := GetEscapedPath(s.dataDir, id)
 
-	f, err := os.OpenFile(fname, os.O_WRONLY|os.O_CREATE, 0644)
+	f, err := os.OpenFile(fname, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return err
 	}
