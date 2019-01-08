@@ -39,6 +39,7 @@ spec:
       - configMap:
           defaultMode: 420
           name: tke-cni-agent-conf
+        name: tke-cni-agent-conf
 ---
 apiVersion: v1
 data:
