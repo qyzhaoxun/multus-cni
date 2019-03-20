@@ -137,6 +137,5 @@ func SetLogFile(filename string) {
 
 func init() {
 	SetLogStderr(true)
-	SetLogFile(defaultLogPath)
 	SetLogLevel("info")
 }
