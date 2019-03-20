@@ -81,7 +81,7 @@ func LoadDelegateNetConf(bytes []byte, ifnameRequest string) (*mtypes.DelegateNe
 	return delegateConf, nil
 }
 
-func LoadCNIRuntimeConf(args *skel.CmdArgs, k8sArgs *mtypes.K8sArgs, ifName string, rc *mtypes.RuntimeConfig) (*libcni.RuntimeConf, error) {
+func LoadCNIRuntimeConf(args *skel.CmdArgs, k8sArgs *mtypes.K8sArgs, ifName string, rc map[string]interface{}) (*libcni.RuntimeConf, error) {
 
 	logging.Debugf("LoadCNIRuntimeConf: %v, %s, %v", k8sArgs, ifName, rc)
 	// In part, adapted from K8s pkg/kubelet/dockershim/network/cni/cni.go#buildCNIRuntimeConf
@@ -100,9 +100,7 @@ func LoadCNIRuntimeConf(args *skel.CmdArgs, k8sArgs *mtypes.K8sArgs, ifName stri
 	}
 
 	if rc != nil {
-		rt.CapabilityArgs = map[string]interface{}{
-			"portMappings": rc.PortMaps,
-		}
+		rt.CapabilityArgs = rc
 	}
 	return rt, nil
 }
@@ -318,6 +316,45 @@ func ConflistDel(rt *libcni.RuntimeConf, rawnetconflist []byte, binDir string) e
 	err = cniNet.DelNetworkList(confList, rt)
 	if err != nil {
 		return logging.Errorf("error in getting result from DelNetworkList: %v", err)
+	}
+
+	return err
+}
+
+func ConfAdd(rt *libcni.RuntimeConf, rawnetconf []byte, binDir string, exec invoke.Exec) (cnitypes.Result, error) {
+	logging.Debugf("confAdd: %v, %s, %s", rt, string(rawnetconf), binDir)
+	// In part, adapted from K8s pkg/kubelet/dockershim/network/cni/cni.go
+	binDirs := filepath.SplitList(os.Getenv("CNI_PATH"))
+	binDirs = append(binDirs, binDir)
+	cniNet := libcni.NewCNIConfig(binDirs, exec)
+
+	conf, err := libcni.ConfFromBytes(rawnetconf)
+	if err != nil {
+		return nil, logging.Errorf("error in converting the raw bytes to conf: %v", err)
+	}
+
+	result, err := cniNet.AddNetwork(conf, rt)
+	if err != nil {
+		return nil, logging.Errorf("error in getting result from AddNetwork: %v", err)
+	}
+
+	return result, nil
+}
+
+func ConfDel(rt *libcni.RuntimeConf, rawnetconf []byte, binDir string) error {
+	logging.Debugf("confDel: %v, %s, %s", rt, string(rawnetconf), binDir)
+	// In part, adapted from K8s pkg/kubelet/dockershim/network/cni/cni.go
+	binDirs := []string{binDir}
+	cniNet := libcni.CNIConfig{Path: binDirs}
+
+	conf, err := libcni.ConfFromBytes(rawnetconf)
+	if err != nil {
+		return logging.Errorf("error in converting the raw bytes to conf: %v", err)
+	}
+
+	err = cniNet.DelNetwork(conf, rt)
+	if err != nil {
+		return logging.Errorf("error in getting result from DelNetwork: %v", err)
 	}
 
 	return err

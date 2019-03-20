@@ -36,13 +36,13 @@ type NetConf struct {
 	CNIDir  string `json:"cniDir"`
 	BinDir  string `json:"binDir"`
 
-	Delegates        []*DelegateNetConf `json:"-"`
-	NetStatus        []*NetworkStatus   `json:"-"`
-	Kubeconfig       string             `json:"kubeconfig"`
-	LogFile          string             `json:"logFile"`
-	LogLevel         string             `json:"logLevel"`
-	RuntimeConfig    *RuntimeConfig     `json:"runtimeConfig,omitempty"`
-	DefaultDelegates string             `json:"defaultDelegates"`
+	Delegates        []*DelegateNetConf     `json:"-"`
+	NetStatus        []*NetworkStatus       `json:"-"`
+	Kubeconfig       string                 `json:"kubeconfig"`
+	LogFile          string                 `json:"logFile"`
+	LogLevel         string                 `json:"logLevel"`
+	RuntimeConfig    map[string]interface{} `json:"runtimeConfig,omitempty"`
+	DefaultDelegates string                 `json:"defaultDelegates"`
 }
 
 // AddDelegates appends the new delegates to the delegates list
@@ -57,17 +57,6 @@ func (n *NetConf) SetDelegates(newDelegates []*DelegateNetConf) error {
 	return nil
 }
 
-type RuntimeConfig struct {
-	PortMaps []PortMapEntry `json:"portMappings,omitempty"`
-}
-
-type PortMapEntry struct {
-	HostPort      int    `json:"hostPort"`
-	ContainerPort int    `json:"containerPort"`
-	Protocol      string `json:"protocol"`
-	HostIP        string `json:"hostIP,omitempty"`
-}
-
 type NetworkStatus struct {
 	Name      string    `json:"name"`
 	Interface string    `json:"interface,omitempty"`
@@ -78,13 +67,11 @@ type NetworkStatus struct {
 }
 
 type DelegateNetConf struct {
-	Conf          types.NetConf
-	ConfList      types.NetConfList
-	IfnameRequest string `json:"ifnameRequest,omitempty"`
-	// MasterPlugin is only used internal housekeeping
-	MasterPlugin bool `json:"-"`
-	// Conflist plugin is only used internal housekeeping
-	ConfListPlugin bool `json:"-"`
+	Conf           types.NetConf
+	ConfList       types.NetConfList
+	IfnameRequest  string `json:"ifnameRequest,omitempty"`
+	MasterPlugin   bool   `json:"masterPlugin,omitempty"`
+	ConfListPlugin bool   `json:"confListPlugin,omitempty"`
 
 	// Raw JSON
 	Bytes []byte

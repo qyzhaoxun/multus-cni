@@ -97,9 +97,9 @@ func delegateAdd(exec invoke.Exec, ifName string, delegate *types.DelegateNetCon
 		return result, nil
 	}
 
-	result, err := invoke.DelegateAdd(delegate.Conf.Type, delegate.Bytes, exec)
+	result, err := conf.ConfAdd(rt, delegate.Bytes, binDir, exec)
 	if err != nil {
-		return nil, logging.Errorf("delegateAdd: error in invoke Delegate add - %q: %v", delegate.Conf.Type, err)
+		return nil, logging.Errorf("delegateAdd: error in invoke Conf add - %q: %v", delegate.Conf.Type, err)
 	}
 
 	return result, nil
@@ -120,8 +120,8 @@ func delegateDel(exec invoke.Exec, ifName string, delegateConf *types.DelegateNe
 		return err
 	}
 
-	if err := invoke.DelegateDel(delegateConf.Conf.Type, delegateConf.Bytes, exec); err != nil {
-		return logging.Errorf("delegateDel: error in invoke Delegate del - %q: %v", delegateConf.Conf.Type, err)
+	if err := conf.ConfDel(rt, delegateConf.Bytes, binDir); err != nil {
+		return logging.Errorf("delegateDel: error in invoke Conf del - %q: %v", delegateConf.Conf.Type, err)
 	}
 
 	return nil
