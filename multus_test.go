@@ -30,7 +30,6 @@ import (
 	"github.com/containernetworking/cni/pkg/types/020"
 	"github.com/containernetworking/cni/pkg/version"
 	"github.com/containernetworking/plugins/pkg/ns"
-	"github.com/containernetworking/plugins/pkg/testutils"
 
 	testhelpers "github.com/qyzhaoxun/multus-cni/pkg/testing"
 
@@ -148,7 +147,7 @@ var _ = Describe("multus operations", func() {
 	BeforeEach(func() {
 		// Create a new NetNS so we don't modify the host
 		var err error
-		testNS, err = testutils.NewNS()
+		//testNS, err = testutils.NewNS()
 		Expect(err).NotTo(HaveOccurred())
 		os.Setenv("CNI_NETNS", testNS.Path())
 		os.Setenv("CNI_PATH", "/some/path")
@@ -245,6 +244,7 @@ var _ = Describe("multus operations", func() {
 	"type": "mynet3",
 	"cniVersion": "0.2.0"
 }`
+		fmt.Println(net3)
 		args := &skel.CmdArgs{
 			ContainerID: "123456789",
 			Netns:       testNS.Path(),
@@ -290,10 +290,10 @@ var _ = Describe("multus operations", func() {
 
 		fKubeClient := testhelpers.NewFakeKubeClient()
 		fKubeClient.AddPod(fakePod)
-		fKubeClient.AddNetConfig(fakePod.ObjectMeta.Namespace, "net1", net1)
-		fKubeClient.AddNetConfig(fakePod.ObjectMeta.Namespace, "net2", net2)
+		//fKubeClient.AddNetConfig(fakePod.ObjectMeta.Namespace, "net1", net1)
+		//fKubeClient.AddNetConfig(fakePod.ObjectMeta.Namespace, "net2", net2)
 		// net3 is not used; make sure it's not accessed
-		fKubeClient.AddNetConfig(fakePod.ObjectMeta.Namespace, "net3", net3)
+		//fKubeClient.AddNetConfig(fakePod.ObjectMeta.Namespace, "net3", net3)
 
 		os.Setenv("CNI_COMMAND", "ADD")
 		os.Setenv("CNI_IFNAME", "eth0")
