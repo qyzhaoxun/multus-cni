@@ -49,8 +49,11 @@ data:
       "type": "multus",
       "kubeconfig": "/root/.kube/config",
       "logLevel": "info",
-      "logFile": "/tmp/multus-cni.log",
-      "defaultDelegates": "tke-bridge"
+      "defaultDelegates": "tke-bridge",
+      "capabilities": {
+        "bandwidth": true,
+        "portMappings": true
+      }
     }
   tke-eni.conf: |
     {
