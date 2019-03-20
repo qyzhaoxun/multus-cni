@@ -41,7 +41,6 @@ const (
 )
 
 func LoadDelegateNetConfList(bytes []byte, delegateConf *mtypes.DelegateNetConf) error {
-
 	logging.Debugf("LoadDelegateNetConfList: %s, %v", string(bytes), delegateConf)
 	if err := json.Unmarshal(bytes, &delegateConf.ConfList); err != nil {
 		return logging.Errorf("err in unmarshalling delegate conflist: %v", err)
