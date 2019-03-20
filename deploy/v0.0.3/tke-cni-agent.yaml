@@ -18,6 +18,7 @@ spec:
         k8s-app: tke-cni-agent
     spec:
       hostNetwork: true
+      terminationGracePeriodSeconds: 0
       containers:
       - image: ccr.ccs.tencentyun.com/tke-cni/tke-cni-agent:v0.0.1
         imagePullPolicy: Always
