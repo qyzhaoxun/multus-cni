@@ -8,7 +8,7 @@ BINARY ?= multus
 CONTAINER_BUILD_PATH ?= /go/src/$(PKG)
 BIN_PATH ?= ./bin/$(BINARY)
 
-REGISTRY ?= ccr.ccs.tencentyun.com/tke-cni
+REGISTRY ?= ccr.ccs.tencentyun.com/tkeimages
 IMG_BINARY ?= multus-cni
 IMAGE ?= $(REGISTRY)/$(IMG_BINARY)
 

@@ -20,7 +20,7 @@ spec:
       hostNetwork: true
       terminationGracePeriodSeconds: 0
       containers:
-      - image: ccr.ccs.tencentyun.com/tke-cni/tke-cni-agent:v0.0.1
+      - image: ccr.ccs.tencentyun.com/tkeimages/tke-cni-agent:v0.0.1
         imagePullPolicy: Always
         name: tke-cni-agent
         volumeMounts:
