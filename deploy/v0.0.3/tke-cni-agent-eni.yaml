@@ -19,6 +19,11 @@ spec:
     spec:
       hostNetwork: true
       terminationGracePeriodSeconds: 0
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+        - effect: NoSchedule
+          key: node.kubernetes.io/not-ready
       containers:
       - image: ccr.ccs.tencentyun.com/tkeimages/tke-cni-agent:v0.0.1-eni
         imagePullPolicy: Always
