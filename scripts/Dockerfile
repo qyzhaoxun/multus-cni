@@ -1,6 +1,6 @@
 FROM ccr.ccs.tencentyun.com/tkeimages/cni-plugins-amd64:v0.7.1 as CNI-Plugins
 
-FROM ccr.ccs.tencentyun.com/tkeimages/multus-cni:v0.0.3 as Multus
+FROM ccr.ccs.tencentyun.com/tkeimages/multus-cni:v0.0.4 as Multus
 
 FROM alpine:3.6
 
@@ -10,6 +10,6 @@ COPY --from=CNI-Plugins /opt/cni/bin/* ./
 
 COPY --from=Multus /multus ./
 
-COPY install-cni.sh /
+COPY scripts/install-cni.sh /
 
 ENTRYPOINT ["/install-cni.sh"]
