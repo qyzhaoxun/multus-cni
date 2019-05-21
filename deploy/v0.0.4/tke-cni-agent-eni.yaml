@@ -1,0 +1,89 @@
+---
+kind: DaemonSet
+apiVersion: extensions/v1beta1
+metadata:
+  name: tke-cni-agent
+  namespace: kube-system
+  labels:
+    k8s-app: tke-cni-agent
+spec:
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      k8s-app: tke-cni-agent
+  template:
+    metadata:
+      labels:
+        k8s-app: tke-cni-agent
+    spec:
+      hostNetwork: true
+      terminationGracePeriodSeconds: 0
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+        - effect: NoSchedule
+          key: node.kubernetes.io/not-ready
+      containers:
+      - image: ccr.ccs.tencentyun.com/tkeimages/tke-cni-agent:v0.0.4-eni
+        imagePullPolicy: Always
+        name: tke-cni-agent
+        volumeMounts:
+        - mountPath: /host/opt/cni/bin
+          name: cni-bin-dir
+        - mountPath: /host/etc/cni/net.d
+          name: cni-net-dir
+        - mountPath: /etc/tke-cni-agent-conf
+          name: tke-cni-agent-conf
+      volumes:
+      - name: cni-bin-dir
+        hostPath:
+          path: /opt/cni/bin
+      - name: cni-net-dir
+        hostPath:
+          path: /etc/cni/net.d
+      - configMap:
+          defaultMode: 420
+          name: tke-cni-agent-conf
+        name: tke-cni-agent-conf
+---
+apiVersion: v1
+data:
+  00-multus.conf: |
+    {
+      "name": "multus-cni",
+      "type": "multus",
+      "kubeconfig": "/root/.kube/config",
+      "logLevel": "info",
+      "defaultDelegates": "tke-bridge",
+      "capabilities": {
+        "bandwidth": true,
+        "portMappings": true
+      }
+    }
+  tke-run.conf: |
+    {
+      "cniVersion": "0.3.1",
+      "name": "tke-run",
+      "type": "tke-run",
+      "run": [
+         {
+           "type" : "node",
+           "bin" : "/root/scf-node-init.sh",
+           "args" : "yes"
+         }
+       ]
+    }
+  tke-eni.conf: |
+    {
+      "cniVersion": "0.3.1",
+      "name": "tke-eni",
+      "type": "tke-eni",
+      "ipam": {
+        "type": "tke-enim"
+      }
+    }
+kind: ConfigMap
+metadata:
+  name: tke-cni-agent-conf
+  namespace: kube-system
