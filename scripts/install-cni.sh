@@ -33,6 +33,7 @@ add_replace_file () {
             return
         fi
     fi
+    echo "add file ${f}"
     cp ${src_dir}/${f} ${dst_dir}/${f}
 }
 
@@ -45,7 +46,7 @@ fi
 mkdir -p ${dst_dir}
 
 echo "=====Starting install multus conf ==========="
-add_replace_file /etc/tke-cni-agent-conf ${dst_dir} 00-multus.conf
+add_replace_file /etc/tke-cni-agent-conf /host/etc/cni/net.d 00-multus.conf
 
 echo "=====Starting install other cni conf"
 add_replace_files /etc/tke-cni-agent-conf ${dst_dir}
