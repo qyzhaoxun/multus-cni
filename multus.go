@@ -29,6 +29,7 @@ import (
 	"github.com/containernetworking/cni/pkg/invoke"
 	"github.com/containernetworking/cni/pkg/skel"
 	cnitypes "github.com/containernetworking/cni/pkg/types"
+	"github.com/containernetworking/cni/pkg/types/current"
 	"github.com/containernetworking/cni/pkg/version"
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/vishvananda/netlink"
@@ -267,10 +268,26 @@ func cmdAdd(args *skel.CmdArgs, exec invoke.Exec, kubeClient k8s.KubeClient) (cn
 		if n.Kubeconfig != "" && kc != nil {
 			delegateNetStatus, err := conf.LoadNetworkStatus(tmpResult, delegate.Conf.Name, delegate.MasterPlugin)
 			if err != nil {
-				return nil, logging.Errorf("cmdAdd: Err in setting networks status: %v", err)
+				logging.Errorf("cmdAdd: Err in load networks status: %v", err)
+				break
 			}
 
 			netStatus = append(netStatus, delegateNetStatus)
+		}
+	}
+
+	// convert to NetConf.cniVersion result
+	if err == nil {
+		r1, err := current.NewResultFromResult(result)
+		if err != nil {
+			logging.Errorf("cmdAdd: Err in new result from master result: %v", err)
+		} else {
+			result, err = r1.GetAsVersion(n.CNIVersion)
+			if err != nil {
+				logging.Errorf("cmdAdd: Err in convert result to version %s: %v", n.CNIVersion, err)
+			} else {
+				logging.Debugf("cmdAdd: Succeed to convert result to version %s [%v]", n.CNIVersion, result)
+			}
 		}
 	}
 
