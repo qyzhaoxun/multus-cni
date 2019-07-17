@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/containernetworking/cni/libcni"
@@ -57,17 +58,16 @@ func LoadDelegateNetConfList(bytes []byte, delegateConf *mtypes.DelegateNetConf)
 }
 
 // Convert raw CNI JSON into a DelegateNetConf structure
-func LoadDelegateNetConf(bytes []byte, ifnameRequest string) (*mtypes.DelegateNetConf, error) {
+func LoadDelegateNetConf(bytes []byte, isConfList bool, ifnameRequest string) (*mtypes.DelegateNetConf, error) {
 	delegateConf := &mtypes.DelegateNetConf{}
-	logging.Debugf("LoadDelegateNetConf: %s, %s", string(bytes), ifnameRequest)
-	if err := json.Unmarshal(bytes, &delegateConf.Conf); err != nil {
-		return nil, logging.Errorf("error in LoadDelegateNetConf - unmarshalling delegate config: %v", err)
-	}
-
-	// Do some minimal validation
-	if delegateConf.Conf.Type == "" {
+	logging.Debugf("LoadDelegateNetConf: %s, %t, %s", string(bytes), isConfList, ifnameRequest)
+	if isConfList {
 		if err := LoadDelegateNetConfList(bytes, delegateConf); err != nil {
 			return nil, logging.Errorf("error in LoadDelegateNetConf: %v", err)
+		}
+	} else {
+		if err := json.Unmarshal(bytes, &delegateConf.Conf); err != nil {
+			return nil, logging.Errorf("error in LoadDelegateNetConf - unmarshalling delegate config: %v", err)
 		}
 	}
 
@@ -81,7 +81,6 @@ func LoadDelegateNetConf(bytes []byte, ifnameRequest string) (*mtypes.DelegateNe
 }
 
 func LoadCNIRuntimeConf(args *skel.CmdArgs, k8sArgs *mtypes.K8sArgs, ifName string, rc map[string]interface{}) (*libcni.RuntimeConf, error) {
-
 	logging.Debugf("LoadCNIRuntimeConf: %v, %s, %v", k8sArgs, ifName, rc)
 	// In part, adapted from K8s pkg/kubelet/dockershim/network/cni/cni.go#buildCNIRuntimeConf
 	// Todo
@@ -138,7 +137,6 @@ func LoadNetworkStatus(r types.Result, netName string, defaultNet bool) (*mtypes
 	netstatus.DNS = result.DNS
 
 	return netstatus, nil
-
 }
 
 func LoadNetConf(bytes []byte) (*mtypes.NetConf, error) {
@@ -217,7 +215,8 @@ func getDefaultDelegates(delegatesAnnot, confdir string) ([]*mtypes.DelegateNetC
 	return delegates, nil
 }
 
-func getCNIConfigFromFile(name string, confdir string) ([]byte, error) {
+// param => confName, confDir; return => confBytes, confList, error
+func getCNIConfigFromFile(name string, confdir string) ([]byte, bool, error) {
 	logging.Debugf("getCNIConfigFromFile: %s, %s", name, confdir)
 
 	// In the absence of valid keys in a Spec, the runtime (or
@@ -229,51 +228,51 @@ func getCNIConfigFromFile(name string, confdir string) ([]byte, error) {
 	files, err := libcni.ConfFiles(confdir, []string{".conf", ".json", ".conflist"})
 	switch {
 	case err != nil:
-		return nil, logging.Errorf("No networks found in %s", confdir)
+		return nil, false, logging.Errorf("No networks found in %s", confdir)
 	case len(files) == 0:
-		return nil, logging.Errorf("No networks found in %s", confdir)
+		return nil, false, logging.Errorf("No networks found in %s", confdir)
 	}
 
+	sort.Strings(files)
 	for _, confFile := range files {
 		var confList *libcni.NetworkConfigList
 		if strings.HasSuffix(confFile, ".conflist") {
 			confList, err = libcni.ConfListFromFile(confFile)
 			if err != nil {
-				return nil, logging.Errorf("Error loading CNI conflist file %s: %v", confFile, err)
+				return nil, false, logging.Errorf("Error loading CNI conflist file %s: %v", confFile, err)
 			}
 
 			if confList.Name == name {
-				return confList.Bytes, nil
+				return confList.Bytes, true, nil
 			}
-
 		} else {
 			conf, err := libcni.ConfFromFile(confFile)
 			if err != nil {
-				return nil, logging.Errorf("Error loading CNI config file %s: %v", confFile, err)
+				return nil, false, logging.Errorf("Error loading CNI config file %s: %v", confFile, err)
 			}
 
 			if conf.Network.Name == name {
 				// Ensure the config has a "type" so we know what plugin to run.
 				// Also catches the case where somebody put a conflist into a conf file.
 				if conf.Network.Type == "" {
-					return nil, logging.Errorf("Error loading CNI config file %s: no 'type'; perhaps this is a .conflist?", confFile)
+					return nil, false, logging.Errorf("Error loading CNI config file %s: no 'type'; perhaps this is a .conflist?", confFile)
 				}
-				return conf.Bytes, nil
+				return conf.Bytes, false, nil
 			}
 		}
 	}
 
-	return nil, logging.Errorf("no network available in the name %s in cni dir %s", name, confdir)
+	return nil, false, logging.Errorf("no network available in the name %s in cni dir %s", name, confdir)
 }
 
 func GetDelegateFromFile(net *mtypes.NetworkSelectionElement, confdir string) (*mtypes.DelegateNetConf, error) {
 	logging.Infof("getDelegateFromFile: %+v, %s", net, confdir)
-	configBytes, err := getCNIConfigFromFile(net.Name, confdir)
+	configBytes, isConfList, err := getCNIConfigFromFile(net.Name, confdir)
 	if err != nil {
 		return nil, logging.Errorf("cniConfigFromNetworkResource: err in getCNIConfigFromFile: %v", err)
 	}
 
-	delegate, err := LoadDelegateNetConf(configBytes, net.InterfaceRequest)
+	delegate, err := LoadDelegateNetConf(configBytes, isConfList, net.InterfaceRequest)
 	if err != nil {
 		return nil, err
 	}
