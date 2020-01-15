@@ -1,9 +1,0 @@
-FROM alpine:edge
-
-WORKDIR /opt/cni/bin
-
-RUN apk add --no-cache ca-certificates
-
-RUN wget -q https://github.com/containernetworking/plugins/releases/download/v0.8.1/cni-plugins-linux-amd64-v0.8.1.tgz -O cni-plugins.tgz && tar xzf cni-plugins.tgz && rm cni-plugins.tgz
-
-CMD ["sh"]
