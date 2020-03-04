@@ -43,7 +43,7 @@ var _ = Describe("config operations", func() {
     }
 
 }`
-		netConf, err := LoadNetConf([]byte(conf))
+		netConf, err := LoadNetConf([]byte(conf), false)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(len(netConf.Delegates)).To(Equal(1))
 		Expect(netConf.Delegates[0].Conf.Type).To(Equal("weave-net"))
@@ -61,7 +61,7 @@ var _ = Describe("config operations", func() {
         "type": "foobar"
     }]
 }`
-		netConf, err := LoadNetConf([]byte(conf))
+		netConf, err := LoadNetConf([]byte(conf), false)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(len(netConf.Delegates)).To(Equal(2))
 		Expect(netConf.Delegates[0].Conf.Type).To(Equal("weave-net"))
@@ -75,7 +75,7 @@ var _ = Describe("config operations", func() {
     "name": "node-cni-network",
     "type": "multus"
 }`
-		_, err := LoadNetConf([]byte(conf))
+		_, err := LoadNetConf([]byte(conf), false)
 		Expect(err).To(HaveOccurred())
 	})
 
@@ -85,7 +85,7 @@ var _ = Describe("config operations", func() {
     "type": "multus",
     "kubeconfig": "/etc/kubernetes/node-kubeconfig.yaml"
 }`
-		_, err := LoadNetConf([]byte(conf))
+		_, err := LoadNetConf([]byte(conf), false)
 		Expect(err).To(HaveOccurred())
 	})
 })

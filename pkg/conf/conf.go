@@ -139,7 +139,7 @@ func LoadNetworkStatus(r types.Result, netName string, defaultNet bool) (*mtypes
 	return netstatus, nil
 }
 
-func LoadNetConf(bytes []byte) (*mtypes.NetConf, error) {
+func LoadNetConf(bytes []byte, loadDefaultDelegates bool) (*mtypes.NetConf, error) {
 	netconf := &mtypes.NetConf{}
 
 	if err := json.Unmarshal(bytes, netconf); err != nil {
@@ -183,13 +183,13 @@ func LoadNetConf(bytes []byte) (*mtypes.NetConf, error) {
 		netconf.BinDir = defaultBinDir
 	}
 
-	if netconf.DefaultDelegates != "" {
+	if loadDefaultDelegates && netconf.DefaultDelegates != "" {
 		delegates, err := getDefaultDelegates(netconf.DefaultDelegates, netconf.ConfDir)
 		if err != nil {
 			return nil, logging.Errorf("failed to load default delegates from config: %v", err)
 		}
-		for _, delegate := range delegates {
-			netconf.Delegates = append(netconf.Delegates, delegate)
+		for idx := range delegates {
+			netconf.Delegates = append(netconf.Delegates, delegates[idx])
 		}
 	}
 
