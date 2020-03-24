@@ -2,39 +2,70 @@
 
 set -e
 
-add_replace_files () {
-    local src_dir=$1
-    local dst_dir=$2
-    for f in $(ls ${src_dir}); do
-        if [[ -f ${src_dir}/${f} ]]; then
-            if [[ -f ${dst_dir}/${f} ]]; then
-                if cmp -s ${src_dir}/${f} ${dst_dir}/${f}; then
-                    echo "skip replace equal file ${f}"
-                    continue
-                fi
-                echo "replace file ${f}"
-                cp ${src_dir}/${f} ${dst_dir}/${f}
+is_kernel_gt_3_12 () {
+    ret1=$(uname --kernel-release)
+    echo "kernel release: ${ret1}"
+    mav=$(echo ${ret1} | awk -F"[.-]" '{print $1}')
+    miv=$(echo ${ret1} | awk -F"[.-]" '{print $2}')
+    if [[ "${mav}" -gt 3 ]]; then
+        return 0
+    elif [[ "${mav}" -eq 3 && "${miv}" -gt 12 ]]; then
+        return 0
+    fi
+    return 1
+}
+
+add_replace_file () {
+    local sf=$1
+    local df=$2
+    if [[ -f "${sf}" ]]; then
+        if [[ -f "${df}" ]]; then
+            if cmp -s ${sf} ${df}; then
+                echo "skip replace ${df} with ${sf}, equal file"
+                return
+            fi
+            echo "replace ${df} with ${sf}"
+            cp ${sf} ${df}
+            return
+        fi
+        echo "add ${sf}"
+        cp ${sf} ${df}
+        return
+    fi
+}
+
+add_replace_cni_configs () {
+    local sd=/etc/tke-cni-agent-conf
+    for f in $(ls ${sd}); do
+        if [[ -f ${sd}/${f} ]]; then
+            if [[ "${f}" == "00-multus.conf" ]]; then
                 continue
             fi
-            echo "add file ${f}"
-            cp ${src_dir}/${f} ${dst_dir}/${f}
-            continue
+            add_replace_file ${sd}/${f} ${dst_dir}/${f}
         fi
     done
 }
 
-add_replace_file () {
-    local src_dir=$1
-    local dst_dir=$2
-    local f=$3
-    if [[ -f ${dst_dir}/${f} ]]; then
-        if cmp -s ${src_dir}/${f} ${dst_dir}/${f}; then
-            echo "skip replace equal file ${f}"
-            return
+add_replace_cni_plugins () {
+    local sd=/opt/cni/bin
+    local dd=/host/opt/cni/bin
+    for f in $(ls ${sd}); do
+        if [[ -f ${sd}/${f} ]]; then
+            if [[ "${f}" == "bandwidth_3_12" ]]; then
+                if ! is_kernel_gt_3_12; then
+                    add_replace_file ${sd}/${f} ${dd}/bandwidth
+                fi
+                continue
+            fi
+            if [[ "${f}" == "bandwidth" ]]; then
+                if is_kernel_gt_3_12; then
+                    add_replace_file ${sd}/${f} ${dd}/bandwidth
+                fi
+                continue
+            fi
+            add_replace_file ${sd}/${f} ${dd}/${f}
         fi
-    fi
-    echo "add file ${f}"
-    cp ${src_dir}/${f} ${dst_dir}/${f}
+    done
 }
 
 dst_dir=$1
@@ -42,17 +73,16 @@ if [[ -z "${dst_dir}" ]]; then
     dst_dir="/host/etc/cni/net.d/multus"
 fi
 
-
 mkdir -p ${dst_dir}
 
 echo "=====Starting install multus conf ==========="
-add_replace_file /etc/tke-cni-agent-conf /host/etc/cni/net.d 00-multus.conf
+add_replace_file /etc/tke-cni-agent-conf/00-multus.conf /host/etc/cni/net.d/00-multus.conf
 
-echo "=====Starting install other cni conf"
-add_replace_files /etc/tke-cni-agent-conf ${dst_dir}
+echo "=====Starting install other cni configs ========="
+add_replace_cni_configs
 
-echo "=====Starting installing cni ========="
-add_replace_files /opt/cni/bin /host/opt/cni/bin
+echo "=====Starting installing cni plugins ========="
+add_replace_cni_plugins
 
 echo "=====Done==========="
 
