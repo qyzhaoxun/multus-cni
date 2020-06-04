@@ -68,12 +68,40 @@ add_replace_cni_plugins () {
     done
 }
 
+add_cni_kubeconfig () {
+    local ca=$(cat /var/run/secrets/kubernetes.io/serviceaccount/ca.crt | base64 | xargs | sed 's/ //g')
+    local token=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+    local server=https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT
+    local configPath=/host/etc/kubernetes/tke-cni-kubeconfig
+    echo "apiVersion: v1
+clusters:
+- name: local
+  cluster:
+    certificate-authority-data: ${ca}
+    server: ${server}
+contexts:
+- name: tke-cni
+  context:
+    cluster: local
+    user: tke-cni
+current-context: tke-cni
+kind: Config
+preferences: {}
+users:
+- name: tke-cni
+  user:
+    token: ${token}" > ${configPath}
+}
+
 dst_dir=$1
 if [[ -z "${dst_dir}" ]]; then
     dst_dir="/host/etc/cni/net.d/multus"
 fi
 
 mkdir -p ${dst_dir}
+
+echo "=====Starting install tke-cni-kubeconfig ==========="
+add_cni_kubeconfig
 
 echo "=====Starting install multus conf ==========="
 add_replace_file /etc/tke-cni-agent-conf/00-multus.conf /host/etc/cni/net.d/00-multus.conf
