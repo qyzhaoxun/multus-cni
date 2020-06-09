@@ -41,6 +41,8 @@ metadata:
 spec:
   updateStrategy:
     type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: "10%"
   selector:
     matchLabels:
       k8s-app: tke-cni-agent
@@ -86,6 +88,7 @@ apiVersion: v1
 data:
   00-multus.conf: |
     {
+      "cniVersion": "0.3.1",
       "name": "multus-cni",
       "type": "multus",
       "kubeconfig": "/etc/kubernetes/tke-cni-kubeconfig",
