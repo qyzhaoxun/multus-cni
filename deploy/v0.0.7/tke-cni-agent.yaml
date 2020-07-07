@@ -8,7 +8,7 @@ rules:
 - apiGroups: [""]
   resources:
   - pods
-  - pods/status,
+  - pods/status
   verbs: ["get", "update"]
 ---
 apiVersion: v1
