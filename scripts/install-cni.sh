@@ -72,7 +72,7 @@ add_cni_kubeconfig () {
     local ca=$(cat /var/run/secrets/kubernetes.io/serviceaccount/ca.crt | base64 | xargs | sed 's/ //g')
     local token=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
     local server=https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT
-    local tmpPath=/etc/kubernetes/tke-cni-kubeconfig
+    local tmpPath=./tke-cni-kubeconfig
     local configPath=/host/etc/kubernetes/tke-cni-kubeconfig
     echo "apiVersion: v1
 clusters:
