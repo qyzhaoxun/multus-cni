@@ -72,6 +72,7 @@ add_cni_kubeconfig () {
     local ca=$(cat /var/run/secrets/kubernetes.io/serviceaccount/ca.crt | base64 | xargs | sed 's/ //g')
     local token=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
     local server=https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT
+    local tmpPath=/etc/kubernetes/tke-cni-kubeconfig
     local configPath=/host/etc/kubernetes/tke-cni-kubeconfig
     echo "apiVersion: v1
 clusters:
@@ -90,7 +91,8 @@ preferences: {}
 users:
 - name: tke-cni
   user:
-    token: ${token}" > ${configPath}
+    token: ${token}" > ${tmpPath}
+    add_replace_file ${tmpPath} ${configPath}
 }
 
 dst_dir=$1
@@ -114,4 +116,14 @@ add_replace_cni_plugins
 
 echo "=====Done==========="
 
-while sleep 3600; do :; done
+if [ -z ${RESTART_INTERVAL} ]; then
+    RESTART_INTERVAL=600
+fi
+
+echo "Reinstall tke-cni-kubeconfig with interval ${RESTART_INTERVAL}s"
+
+while sleep ${RESTART_INTERVAL} 
+do 
+    echo "=====Reinstall tke-cni-kubeconfig ==========="
+    add_cni_kubeconfig 
+done
