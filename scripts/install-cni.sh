@@ -74,6 +74,10 @@ add_cni_kubeconfig () {
     local server=https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT
     local tmpPath=./tke-cni-kubeconfig
     local configPath=/host/etc/kubernetes/tke-cni-kubeconfig
+    if [[ -z "${KUBERNETES_SERVICE_HOST}" || -z "${KUBERNETES_SERVICE_PORT}" ]]; then
+        echo "error: KUBERNETES_SERVICE_HOST or KUBERNETES_SERVICE_PORT is not set, services may not be synchronized to the node"
+        exit 1
+    fi
     echo "apiVersion: v1
 clusters:
 - name: local
@@ -116,7 +120,7 @@ add_replace_cni_plugins
 
 echo "=====Done==========="
 
-if [ -z ${RESTART_INTERVAL} ]; then
+if [[ -z "${RESTART_INTERVAL}" ]]; then
     RESTART_INTERVAL=600
 fi
 
