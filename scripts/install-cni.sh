@@ -15,6 +15,13 @@ is_kernel_gt_3_12 () {
     return 1
 }
 
+is_kernel_tlinux2 () {
+    if uname --kernel-release | grep -q tlinux2; then
+        return 0
+    fi
+    return 1
+}
+
 add_replace_file () {
     local sf=$1
     local df=$2
@@ -63,6 +70,18 @@ add_replace_cni_plugins () {
                 fi
                 continue
             fi
+            if [[ "${f}" == "bridge_tlinux2" ]]; then
+                if is_kernel_tlinux2; then
+                    add_replace_file ${sd}/${f} ${dd}/bridge
+                fi
+                continue
+             fi
+             if [[ "${f}" == "bridge" ]]; then
+                if ! is_kernel_tlinux2; then
+                    add_replace_file ${sd}/${f} ${dd}/bridge
+                fi
+                continue
+             fi
             add_replace_file ${sd}/${f} ${dd}/${f}
         fi
     done
