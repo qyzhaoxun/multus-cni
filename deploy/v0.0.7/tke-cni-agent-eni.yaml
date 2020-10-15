@@ -5,11 +5,11 @@ kind: ClusterRole
 metadata:
   name: tke-cni-clusterrole
 rules:
-- apiGroups: [""]
-  resources:
-  - pods
-  - pods/status
-  verbs: ["get", "update"]
+  - apiGroups: [""]
+    resources:
+      - pods
+      - pods/status
+    verbs: ["get", "update"]
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -27,22 +27,18 @@ roleRef:
   kind: ClusterRole
   name: tke-cni-clusterrole
 subjects:
-- kind: ServiceAccount
-  name: tke-cni
-  namespace: kube-system
+  - kind: ServiceAccount
+    name: tke-cni
+    namespace: kube-system
 ---
-kind: DaemonSet
 apiVersion: extensions/v1beta1
+kind: DaemonSet
 metadata:
-  name: tke-cni-agent
-  namespace: kube-system
   labels:
     k8s-app: tke-cni-agent
+  name: tke-cni-agent
+  namespace: kube-system
 spec:
-  updateStrategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: "10%"
   selector:
     matchLabels:
       k8s-app: tke-cni-agent
@@ -51,74 +47,96 @@ spec:
       labels:
         k8s-app: tke-cni-agent
     spec:
-      serviceAccountName: "tke-cni"
-      hostNetwork: true
-      terminationGracePeriodSeconds: 0
-      tolerations:
-        - operator: Exists
       containers:
       - image: ccr.ccs.tencentyun.com/tkeimages/tke-cni-agent:v0.0.7-eni
         imagePullPolicy: Always
         name: tke-cni-agent
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
         volumeMounts:
         - mountPath: /host/opt/cni/bin
           name: cni-bin-dir
         - mountPath: /host/etc/cni/net.d
           name: cni-net-dir
-        - mountPath: /host/etc/kubernetes/
-          name: kube-conf-dir
         - mountPath: /etc/tke-cni-agent-conf
           name: tke-cni-agent-conf
+        - mountPath: /host/etc/kubernetes/
+          name: kube-conf-dir
+      dnsPolicy: ClusterFirst
+      serviceAccountName: "tke-cni"
+      hostNetwork: true
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 0
+      tolerations:
+      - operator: Exists
       volumes:
-      - name: cni-bin-dir
-        hostPath:
-          path: /opt/cni/bin
-      - name: cni-net-dir
-        hostPath:
-          path: /etc/cni/net.d
-      - name: kube-conf-dir
-        hostPath:
+      - hostPath:
           path: /etc/kubernetes
+          type: ""
+        name: kube-conf-dir
+      - hostPath:
+          path: /opt/cni/bin
+          type: ""
+        name: cni-bin-dir
+      - hostPath:
+          path: /etc/cni/net.d
+          type: ""
+        name: cni-net-dir
       - configMap:
           defaultMode: 420
           name: tke-cni-agent-conf
         name: tke-cni-agent-conf
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 10%
+    type: RollingUpdate
 ---
 apiVersion: v1
 data:
   00-multus.conf: |
-    {
-      "cniVersion": "0.3.1",
-      "name": "multus-cni",
-      "type": "multus",
-      "kubeconfig": "/etc/kubernetes/tke-cni-kubeconfig",
-      "logLevel": "info",
-      "defaultDelegates": "tke-bridge",
-      "capabilities": {
-        "bandwidth": true,
-        "portMappings": true
-      }
-    }
-  tke-run.conf: |
-    {
-      "cniVersion": "0.3.1",
-      "name": "tke-run",
-      "type": "tke-run",
-      "run": [
-         {
-           "type" : "node",
-           "bin" : "/root/scf-node-init.sh",
-           "args" : "yes"
-         }
-       ]
-    }
+        {
+          "cniVersion": "0.3.1",
+          "name": "multus-cni",
+          "type": "multus",
+          "kubeconfig": "/etc/kubernetes/tke-cni-kubeconfig",
+          "logLevel": "info",
+          "defaultDelegates": "tke-bridge,tke-route",
+          "capabilities": {
+            "bandwidth": true,
+            "portMappings": true
+          }
+        }
   tke-eni.conf: |
     {
       "cniVersion": "0.3.1",
       "name": "tke-eni",
       "type": "tke-eni",
+      "kubeconfig": "/etc/kubernetes/tke-cni-kubeconfig",
       "ipam": {
         "type": "tke-enim"
+      }
+    }
+  tke-route.conf: |
+    {
+      "cniVersion": "0.3.1",
+      "name": "tke-route",
+      "type": "tke-route",
+      "ipam": {
+        "routes": [
+          {
+            "type": "node",
+            "subnet": "127.128.0.0/9",
+            "dev": "eth0"
+          },
+          {
+            "type": "pod",
+            "subnet": "127.128.0.0/9",
+            "dev": "eth0"
+          }
+        ]
       }
     }
 kind: ConfigMap
