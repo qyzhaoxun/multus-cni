@@ -6,7 +6,7 @@ FROM ccr.ccs.tencentyun.com/tkeimages/cni-plugins-amd64:v0.7.0-tencent as Tencen
 
 FROM ccr.ccs.tencentyun.com/tkeimages/multus-cni:v0.0.6 as Multus
 
-FROM ccr.ccs.tencentyun.com/tkeimages/tke-eni:v1.0.3 as TKE-ENI
+FROM ccr.ccs.tencentyun.com/tkeimages/tke-eni:v1.0.4 as TKE-ENI
 
 FROM alpine:3.6
 
