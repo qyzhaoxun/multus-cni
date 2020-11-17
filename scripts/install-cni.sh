@@ -1,6 +1,8 @@
 #!/usr/bin/env sh
 
-set -e
+set -o errexit
+#set -o nounset
+set -o pipefail
 
 is_kernel_gt_3_12 () {
     ret1=$(uname --kernel-release)
