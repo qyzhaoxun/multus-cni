@@ -1,6 +1,8 @@
 #!/usr/bin/env sh
 
-set -e
+set -o errexit
+#set -o nounset
+set -o pipefail
 
 is_kernel_gt_3_12 () {
     ret1=$(uname --kernel-release)
@@ -76,6 +78,10 @@ add_cni_kubeconfig () {
     local configPath=/host/etc/kubernetes/tke-cni-kubeconfig
     if [[ -z "${KUBERNETES_SERVICE_HOST}" || -z "${KUBERNETES_SERVICE_PORT}" ]]; then
         echo "error: KUBERNETES_SERVICE_HOST or KUBERNETES_SERVICE_PORT is not set, services may not be synchronized to the node"
+        exit 1
+    fi
+    if [[ -z "${ca}" || -z "${token}" ]]; then
+        echo "error: empty ca or token"
         exit 1
     fi
     echo "apiVersion: v1
