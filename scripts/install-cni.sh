@@ -78,6 +78,10 @@ add_cni_kubeconfig () {
         echo "error: KUBERNETES_SERVICE_HOST or KUBERNETES_SERVICE_PORT is not set, services may not be synchronized to the node"
         exit 1
     fi
+    if [[ -z "${ca}" || -z "${token}" ]]; then
+        echo "error: empty ca or token"
+        exit 1
+    fi
     echo "apiVersion: v1
 clusters:
 - name: local
