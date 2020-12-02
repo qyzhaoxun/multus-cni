@@ -1,7 +1,10 @@
-FROM alpine:3.6
+ARG BASEIMAGE
+FROM ${BASEIMAGE}
+
+ARG GOARCH
 
 RUN apk add --no-cache ca-certificates
 
-COPY bin/multus /
+COPY bin/${GOARCH}/multus /
 
 CMD ["sh"]
