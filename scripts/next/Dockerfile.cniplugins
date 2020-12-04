@@ -1,4 +1,4 @@
-FROM alpine:edge
+FROM amd64/alpine:edge
 
 ARG cni_tag
 
