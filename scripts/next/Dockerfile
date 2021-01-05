@@ -6,7 +6,7 @@ FROM ccr.ccs.tencentyun.com/tkeimages/cni-plugins-${arch}:$cni_tag as CNI-Plugin
 
 FROM ccr.ccs.tencentyun.com/tkeimages/cni-plugins-${arch}:v0.7.0-tencent as Tencent-CNI-Plugins
 
-FROM ccr.ccs.tencentyun.com/tkeimages/multus-cni:${arch}-v0.0.6 as Multus
+FROM ccr.ccs.tencentyun.com/tkeimages/multus-cni:${arch}-v0.1.0-alpha.0 as Multus
 
 FROM ${BASEIMAGE}
 
