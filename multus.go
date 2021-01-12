@@ -215,7 +215,7 @@ func cmdAdd(args *skel.CmdArgs, exec invoke.Exec, kubeClient k8s.KubeClient) (cn
 	logging.Infof("cmdAdd: {containerId %s, netNs %s, ifName %s, args %s, path %s, stdinData %s}, %v, %v",
 		args.ContainerID, args.Netns, args.IfName, args.Args, args.Path, string(args.StdinData), exec, kubeClient)
 
-	n, err := conf.LoadNetConf(args.StdinData, true)
+	n, err := conf.LoadNetConf(args.StdinData, false)
 	if err != nil {
 		return nil, logging.Errorf("cmdAdd: err in loading netconf: %v", err)
 	}

@@ -50,7 +50,7 @@ push-agent-arm64:
 
 buildx-agent: push-agent push-agent-arm64
 	$(eval IMAGE := $(AGENT_IMAGE):$(AGENT_TAG))
-	$(eval IMAGES := $(foreach arch, amd64 arm64, $(AGENT_IMAGE):$(arch)-$(AGENT_TAG)))
+	$(eval IMAGES := $(foreach arch, amd64 arm64, $(AGENT_IMAGE):linux-$(arch)_$(AGENT_TAG)))
 	@echo "===========> push multi-arch image $(AGENT_IMAGE)"
 	@docker buildx imagetools create -t $(IMAGE) $(IMAGES)
 

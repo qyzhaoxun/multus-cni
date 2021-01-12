@@ -184,7 +184,7 @@ func LoadNetConf(bytes []byte, loadDefaultDelegates bool) (*mtypes.NetConf, erro
 	}
 
 	if loadDefaultDelegates && netconf.DefaultDelegates != "" {
-		delegates, err := getDefaultDelegates(netconf.DefaultDelegates, netconf.ConfDir)
+		delegates, err := GetDefaultDelegates(netconf.DefaultDelegates, netconf.ConfDir)
 		if err != nil {
 			return nil, logging.Errorf("failed to load default delegates from config: %v", err)
 		}
@@ -196,7 +196,7 @@ func LoadNetConf(bytes []byte, loadDefaultDelegates bool) (*mtypes.NetConf, erro
 	return netconf, nil
 }
 
-func getDefaultDelegates(delegatesAnnot, confdir string) ([]*mtypes.DelegateNetConf, error) {
+func GetDefaultDelegates(delegatesAnnot, confdir string) ([]*mtypes.DelegateNetConf, error) {
 	networks, err := utils.ParsePodNetworkAnnotation(delegatesAnnot, "")
 	if err != nil {
 		return nil, err

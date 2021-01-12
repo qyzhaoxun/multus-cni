@@ -20,7 +20,7 @@ import (
 	"os"
 	"strings"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -173,18 +173,18 @@ func GetK8sArgs(args *skel.CmdArgs) (*types.K8sArgs, error) {
 
 // Attempts to load Kubernetes-defined delegates and add them to the Multus config.
 // Returns the number of Kubernetes-defined delegates added or an error.
-func TryLoadK8sDelegates(k8sArgs *types.K8sArgs, conf *types.NetConf, kubeClient KubeClient) (int, *clientInfo, error) {
+func TryLoadK8sDelegates(k8sArgs *types.K8sArgs, netConf *types.NetConf, kubeClient KubeClient) (int, *clientInfo, error) {
 	var err error
 	clientInfo := &clientInfo{}
 
-	logging.Debugf("TryLoadK8sDelegates: %v, %v, %v", k8sArgs, conf, kubeClient)
-	kubeClient, err = GetK8sClient(conf.Kubeconfig, kubeClient)
+	logging.Debugf("TryLoadK8sDelegates: %v, %v, %v", k8sArgs, netConf, kubeClient)
+	kubeClient, err = GetK8sClient(netConf.Kubeconfig, kubeClient)
 	if err != nil {
 		return 0, nil, err
 	}
 
 	if kubeClient == nil {
-		if len(conf.Delegates) == 0 {
+		if len(netConf.Delegates) == 0 {
 			// No available kube client and no delegates, we can't do anything
 			return 0, nil, logging.Errorf("must have either Kubernetes config or delegates, refer Multus README.md for the usage guide")
 		}
@@ -192,19 +192,28 @@ func TryLoadK8sDelegates(k8sArgs *types.K8sArgs, conf *types.NetConf, kubeClient
 	}
 
 	setKubeClientInfo(clientInfo, kubeClient, k8sArgs)
-	delegates, err := GetK8sNetwork(kubeClient, k8sArgs, conf.ConfDir)
+	delegates, err := GetK8sNetwork(kubeClient, k8sArgs, netConf.ConfDir)
 	if err != nil {
-		if _, ok := err.(*NoK8sNetworkError); ok {
+		if _, ok := err.(*NoK8sNetworkError); !ok {
+			return 0, nil, logging.Errorf("TryLoadK8sDelegates: Err in getting k8s network from pod: %v", err)
+		}
+		// err == NoK8sNetworkError
+		if netConf.DefaultDelegates == "" {
+			logging.Infof("Not found network from annotations, and default Delegates is empty, skip. K8sArgs: %v", k8sArgs)
 			return 0, clientInfo, nil
 		}
-		return 0, nil, logging.Errorf("TryLoadK8sDelegates: Err in getting k8s network from pod: %v", err)
+		logging.Infof("Not found network from annotations, try to get default delegates %v. K8sArgs: %v", netConf.DefaultDelegates, k8sArgs)
+		delegates, err = conf.GetDefaultDelegates(netConf.DefaultDelegates, netConf.ConfDir)
+		if err != nil {
+			return 0, nil, logging.Errorf("failed to load default delegates from config: %v", err)
+		}
 	}
 
-	if err = conf.SetDelegates(delegates); err != nil {
+	if err = netConf.SetDelegates(delegates); err != nil {
 		return 0, nil, err
 	}
 
-	conf.Delegates[0].MasterPlugin = true
+	netConf.Delegates[0].MasterPlugin = true
 
 	return len(delegates), clientInfo, nil
 }
