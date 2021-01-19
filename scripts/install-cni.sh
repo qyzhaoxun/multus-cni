@@ -80,16 +80,33 @@ add_cni_kubeconfig () {
         echo "error: KUBERNETES_SERVICE_HOST or KUBERNETES_SERVICE_PORT is not set, services may not be synchronized to the node"
         exit 1
     fi
-    if [[ -z "${ca}" || -z "${token}" ]]; then
-        echo "error: empty ca or token"
+    if [[ -z "${token}" ]]; then
+        echo "error: empty token"
         exit 1
     fi
+
+    skipVerify=0
+    if [[ -n "${SKIP_TLS_VERIFY}" ]]; then
+        skipVerify=1
+        echo "SKIP_TLS_VERIFY is set ${SKIP_TLS_VERIFY}, set insecure-skip-tls-verify: true"
+    fi
+    if [[ ${skipVerify} -eq 0 ]]; then
+        if [[ -z "${ca}" ]]; then
+            echo "error: empty ca"
+            exit 1
+        fi
+    fi
+
     echo "apiVersion: v1
 clusters:
 - name: local
-  cluster:
-    certificate-authority-data: ${ca}
-    server: ${server}
+  cluster:" > ${tmpPath}
+    if [[ ${skipVerify} -eq 0 ]]; then
+        echo "    certificate-authority-data: ${ca}" >> ${tmpPath}
+    else
+        echo "    insecure-skip-tls-verify: true" >> ${tmpPath}
+    fi
+    echo "    server: ${server}
 contexts:
 - name: tke-cni
   context:
@@ -101,7 +118,7 @@ preferences: {}
 users:
 - name: tke-cni
   user:
-    token: ${token}" > ${tmpPath}
+    token: ${token}" >> ${tmpPath}
     add_replace_file ${tmpPath} ${configPath}
 }
 
