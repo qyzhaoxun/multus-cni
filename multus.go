@@ -266,7 +266,11 @@ func cmdAdd(args *skel.CmdArgs, exec invoke.Exec, kubeClient k8s.KubeClient) (cn
 
 		//create the network status, only in case Multus as kubeconfig
 		if n.Kubeconfig != "" && kc != nil {
-			delegateNetStatus, err := conf.LoadNetworkStatus(tmpResult, delegate.Conf.Name, delegate.MasterPlugin)
+			name := delegate.Conf.Name
+			if delegate.ConfListPlugin {
+				name = delegate.ConfList.Name
+			}
+			delegateNetStatus, err := conf.LoadNetworkStatus(tmpResult, name, delegate.MasterPlugin)
 			if err != nil {
 				logging.Errorf("cmdAdd: Err in load networks status: %v", err)
 				break
